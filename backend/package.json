@@ -1,6 +1,7 @@
 {
   "name": "cargo-warehouse-backend",
   "version": "1.0.0",
+  "type": "commonjs",
   "description": "Backend API for the Cargo Warehouse Inventory System",
   "main": "server.js",
   "scripts": {
