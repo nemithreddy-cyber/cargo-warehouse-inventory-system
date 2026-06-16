@@ -177,6 +177,7 @@ const ensureDbReady = () => {
 // Kick off initialization immediately
 dbReadyPromise = initializeDb().catch((err) => {
   console.error('❌ DB init failed:', err.message);
+  console.error('❌ DB init stack:', err.stack);
   dbReadyPromise = null;
 });
 

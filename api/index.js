@@ -1,3 +1,5 @@
+'use strict';
+
 let app;
 try {
   app = require('../backend/app');
@@ -7,7 +9,7 @@ try {
   app.all('*', (req, res) => {
     res.status(500).json({
       success: false,
-      message: 'Vercel Serverless Function Initialization Error',
+      message: 'Server initialization error',
       error: err.message,
       stack: err.stack
     });
