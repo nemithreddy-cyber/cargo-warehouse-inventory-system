@@ -19,12 +19,16 @@ const app = express();
 // Global middleware
 app.use(cors({
   origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
     // Allow any localhost origin (Vite may use 5173, 5174, etc.)
-    if (!origin || /^http:\/\/localhost:\d+$/.test(origin)) {
-      return callback(null, true);
-    }
-    const allowed = process.env.CORS_ORIGIN || 'http://localhost:5173';
-    callback(origin === allowed ? null : new Error('Not allowed by CORS'), origin === allowed);
+    if (/^http:\/\/localhost:\d+$/.test(origin)) return callback(null, true);
+    // Allow any Vercel deployment (including preview deployments)
+    if (/\.vercel\.app$/.test(origin)) return callback(null, true);
+    // Allow custom CORS_ORIGIN env var (e.g. custom domain)
+    const allowed = process.env.CORS_ORIGIN;
+    if (allowed && origin === allowed) return callback(null, true);
+    callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
 }));
