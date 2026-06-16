@@ -64,8 +64,16 @@ const initializeSqlite = () => {
       if (isNew) {
         console.log('ℹ️ SQLite database is empty. Initializing schema and seed data...');
         try {
-          const schemaSql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
-          const seedSql = fs.readFileSync(path.join(__dirname, 'seed.sql'), 'utf8');
+          let schemaSql, seedSql;
+          try {
+            schemaSql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
+            seedSql = fs.readFileSync(path.join(__dirname, 'seed.sql'), 'utf8');
+          } catch (fileReadErr) {
+            console.log('ℹ️ File read failed, using serverless fallback dbInitData.js');
+            const dbInitData = require('./dbInitData');
+            schemaSql = dbInitData.SCHEMA_SQL;
+            seedSql = dbInitData.SEED_SQL;
+          }
           
           const translatedSchema = translateSql(schemaSql);
           const translatedSeed = translateSql(seedSql);
