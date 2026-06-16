@@ -1,34 +1,30 @@
 'use strict';
 
 const path = require('path');
-const fs = require('fs');
+const fs   = require('fs');
 
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
-let dbClient = 'sqlite';
+// ─── @libsql/client: pure-JS SQLite, works on Vercel Lambda (no native binaries)
+// On Vercel: file:/tmp/cargo_inventory.db (writable ephemeral storage)
+// Locally  : file:backend/database/cargo_inventory.db
+// Turso    : set TURSO_DATABASE_URL + TURSO_AUTH_TOKEN env vars
+
+let db = null;           // libsql client
 let mysqlPool = null;
-
-// ─── sql.js (Vercel/serverless) vs sqlite3 (local) ─────────────────────────
-// sql.js is pure WebAssembly — no native binaries, works on any platform.
-// sqlite3 uses native binaries compiled for the host OS — fine locally,
-// but fails on Vercel (Amazon Linux needs GLIBC_2.38 which isn't available).
-
-let sqliteDb = null; // sqlite3 Database instance (local)
-let sqlJs = null;    // sql.js Database instance (Vercel)
-let usesSqlJs = false;
+let dbClient  = 'sqlite';
 
 const dbPath = process.env.VERCEL
   ? '/tmp/cargo_inventory.db'
   : path.join(__dirname, '..', 'database', 'cargo_inventory.db');
 
-// Ensure local database folder exists
+// Ensure local dir exists
 if (!process.env.VERCEL) {
-  const dbDir = path.dirname(dbPath);
-  if (!fs.existsSync(dbDir)) {
-    try { fs.mkdirSync(dbDir, { recursive: true }); } catch (_) {}
-  }
+  const dir = path.dirname(dbPath);
+  if (!fs.existsSync(dir)) try { fs.mkdirSync(dir, { recursive: true }); } catch (_) {}
 }
 
+// ─── SQL translation (MySQL → SQLite dialect) ────────────────────────────────
 function translateSql(sql) {
   let t = sql;
   t = t.replace(/CREATE DATABASE IF NOT EXISTS \w+[^;]*;/gi, '');
@@ -54,113 +50,94 @@ function translateSql(sql) {
 }
 
 function getSqlContent() {
-  let schemaSql, seedSql;
   try {
-    schemaSql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
-    seedSql   = fs.readFileSync(path.join(__dirname, 'seed.sql'), 'utf8');
+    return {
+      schemaSql: fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8'),
+      seedSql:   fs.readFileSync(path.join(__dirname, 'seed.sql'),   'utf8'),
+    };
   } catch (_) {
-    const dbInitData = require('./dbInitData');
-    schemaSql = dbInitData.SCHEMA_SQL;
-    seedSql   = dbInitData.SEED_SQL;
+    const { SCHEMA_SQL, SEED_SQL } = require('./dbInitData');
+    return { schemaSql: SCHEMA_SQL, seedSql: SEED_SQL };
   }
-  return { schemaSql, seedSql };
 }
 
-// ─── sql.js initializer (Vercel) ────────────────────────────────────────────
-const initSqlJs = async () => {
-  const initSqlJsLib = require('sql.js');
-  const SQL = await initSqlJsLib();
+// ─── Split multi-statement SQL into individual statements ────────────────────
+function splitStatements(sql) {
+  return sql
+    .split(';')
+    .map(s => s.trim())
+    .filter(s => s.length > 0 && !s.startsWith('--'));
+}
 
-  // Try to load existing DB from /tmp
-  let db;
-  if (fs.existsSync(dbPath) && fs.statSync(dbPath).size > 0) {
-    const fileBuffer = fs.readFileSync(dbPath);
-    db = new SQL.Database(fileBuffer);
-    console.log('✅ sql.js: Loaded existing DB from', dbPath);
-  } else {
-    db = new SQL.Database();
-    console.log('✅ sql.js: Created new in-memory DB');
+// ─── libsql initializer ──────────────────────────────────────────────────────
+async function initLibSql() {
+  const { createClient } = require('@libsql/client');
 
-    const { schemaSql, seedSql } = getSqlContent();
-    db.run(translateSql(schemaSql));
-    db.run(translateSql(seedSql));
-    console.log('✅ sql.js: Schema + seed applied');
+  // Turso cloud DB if env vars present, otherwise local file
+  const url = process.env.TURSO_DATABASE_URL
+    ? process.env.TURSO_DATABASE_URL
+    : `file:${dbPath}`;
 
-    // Persist to /tmp so subsequent warm invocations reuse it
-    try {
-      const data = db.export();
-      fs.writeFileSync(dbPath, Buffer.from(data));
-      console.log('✅ sql.js: DB persisted to', dbPath);
-    } catch (e) {
-      console.warn('⚠️ sql.js: Could not persist DB:', e.message);
-    }
+  const config = { url };
+  if (process.env.TURSO_AUTH_TOKEN) {
+    config.authToken = process.env.TURSO_AUTH_TOKEN;
   }
 
-  sqlJs = db;
-  usesSqlJs = true;
-};
+  db = createClient(config);
+  console.log('✅ libsql client created:', url);
 
-// ─── sqlite3 initializer (local) ────────────────────────────────────────────
-const initSqlite3 = () => {
+  // Check if schema already applied
+  try {
+    await db.execute('SELECT 1 FROM users LIMIT 1');
+    console.log('✅ libsql: existing schema detected, skipping init');
+    return;
+  } catch (_) {
+    // Table doesn't exist yet — apply schema + seed
+  }
+
+  console.log('ℹ️ libsql: applying schema and seed...');
+  const { schemaSql, seedSql } = getSqlContent();
+
+  for (const stmt of splitStatements(translateSql(schemaSql))) {
+    await db.execute(stmt);
+  }
+  console.log('✅ libsql: schema applied');
+
+  for (const stmt of splitStatements(translateSql(seedSql))) {
+    await db.execute(stmt);
+  }
+  console.log('✅ libsql: seed applied');
+}
+
+// ─── sqlite3 initializer (local fallback when @libsql/client not preferred) ──
+function initSqlite3() {
   return new Promise((resolve, reject) => {
     const sqlite3 = require('sqlite3').verbose();
-    const isNew = !fs.existsSync(dbPath) || fs.statSync(dbPath).size === 0;
-
-    sqliteDb = new sqlite3.Database(dbPath, (err) => {
+    const isNew   = !fs.existsSync(dbPath) || fs.statSync(dbPath).size === 0;
+    const native  = new sqlite3.Database(dbPath, (err) => {
       if (err) return reject(err);
-      console.log('✅ sqlite3: Connected at', dbPath);
-
-      if (!isNew) return resolve();
+      console.log('✅ sqlite3 connected:', dbPath);
+      if (!isNew) return resolve(native);
 
       const { schemaSql, seedSql } = getSqlContent();
-      sqliteDb.serialize(() => {
-        sqliteDb.exec(translateSql(schemaSql), (e1) => {
-          if (e1) return reject(e1);
-          sqliteDb.exec(translateSql(seedSql), (e2) => {
+      native.serialize(() => {
+        native.exec(translateSql(schemaSql), (e) => {
+          if (e) return reject(e);
+          native.exec(translateSql(seedSql), (e2) => {
             if (e2) return reject(e2);
-            console.log('✅ sqlite3: Schema + seed applied');
-            resolve();
+            resolve(native);
           });
         });
       });
     });
   });
-};
-
-// ─── Query helpers ──────────────────────────────────────────────────────────
-
-// Run a query on sql.js and return [rows] or [{insertId, affectedRows}]
-function runSqlJs(sql, params = []) {
-  const isSelect = /^\s*(select|show|describe|pragma)/i.test(sql.trim());
-
-  if (isSelect) {
-    const stmt = sqlJs.prepare(sql);
-    stmt.bind(params);
-    const rows = [];
-    while (stmt.step()) {
-      rows.push(stmt.getAsObject());
-    }
-    stmt.free();
-    return [rows];
-  } else {
-    sqlJs.run(sql, params);
-    const insertId = sqlJs.exec('SELECT last_insert_rowid()')[0]?.values[0][0] || 0;
-    const changes  = sqlJs.exec('SELECT changes()')[0]?.values[0][0] || 0;
-
-    // Persist after writes so data survives across warm invocations
-    try {
-      const data = sqlJs.export();
-      fs.writeFileSync(dbPath, Buffer.from(data));
-    } catch (_) {}
-
-    return [{ insertId, affectedRows: changes }];
-  }
 }
 
-// ─── Promise that resolves when DB is ready ──────────────────────────────────
+// ─── DB initialization ───────────────────────────────────────────────────────
 let dbReadyPromise = null;
 
-const initializeDb = async () => {
+async function initializeDb() {
+  // MySQL (explicit config, non-Vercel)
   if (process.env.DB_CLIENT === 'mysql' && !process.env.VERCEL) {
     try {
       const mysql = require('mysql2/promise');
@@ -170,29 +147,21 @@ const initializeDb = async () => {
         user: process.env.DB_USER || 'root',
         password: process.env.DB_PASSWORD || '',
         database: process.env.DB_NAME || 'cargo_warehouse',
-        waitForConnections: true,
-        connectionLimit: 10,
-        queueLimit: 0,
-        timezone: '+00:00',
+        waitForConnections: true, connectionLimit: 10, queueLimit: 0, timezone: '+00:00',
       });
-      const conn = await mysqlPool.getConnection();
+      const c = await mysqlPool.getConnection();
       console.log('✅ MySQL connected');
-      conn.release();
+      c.release();
       dbClient = 'mysql';
       return;
     } catch (err) {
-      console.warn('⚠️ MySQL failed, falling back to SQLite:', err.message);
+      console.warn('⚠️ MySQL failed, falling back to libsql:', err.message);
     }
   }
 
   dbClient = 'sqlite';
-
-  if (process.env.VERCEL) {
-    await initSqlJs();
-  } else {
-    await initSqlite3();
-  }
-};
+  await initLibSql();
+}
 
 const ensureDbReady = () => {
   if (!dbReadyPromise) {
@@ -205,7 +174,7 @@ const ensureDbReady = () => {
   return dbReadyPromise;
 };
 
-// Start init immediately (non-blocking)
+// Kick off initialization immediately
 dbReadyPromise = initializeDb().catch((err) => {
   console.error('❌ DB init failed:', err.message);
   dbReadyPromise = null;
@@ -219,27 +188,29 @@ const query = async (sql, params = []) => {
     return mysqlPool.query(sql, params);
   }
 
-  const translatedSql = translateSql(sql);
+  // libsql
+  const translated = translateSql(sql);
 
-  if (usesSqlJs) {
-    return runSqlJs(translatedSql, params);
+  // Convert positional ? params to named :p1, :p2, ... that libsql expects
+  let i = 0;
+  const namedSql    = translated.replace(/\?/g, () => `:p${++i}`);
+  const namedParams = {};
+  params.forEach((v, idx) => { namedParams[`p${idx + 1}`] = v; });
+
+  const result = await db.execute({ sql: namedSql, args: namedParams });
+
+  const isSelect = /^\s*(select|show|describe|pragma)/i.test(translated.trim());
+  if (isSelect) {
+    // Convert libsql ResultSet rows to plain objects
+    const rows = result.rows.map(row => {
+      const obj = {};
+      result.columns.forEach((col, ci) => { obj[col] = row[ci]; });
+      return obj;
+    });
+    return [rows];
+  } else {
+    return [{ insertId: Number(result.lastInsertRowid ?? 0), affectedRows: result.rowsAffected ?? 0 }];
   }
-
-  // sqlite3 (local)
-  return new Promise((resolve, reject) => {
-    const isSelect = /^\s*(select|show|describe|pragma)/i.test(translatedSql.trim());
-    if (isSelect) {
-      sqliteDb.all(translatedSql, params, (err, rows) => {
-        if (err) return reject(err);
-        resolve([rows]);
-      });
-    } else {
-      sqliteDb.run(translatedSql, params, function (err) {
-        if (err) return reject(err);
-        resolve([{ insertId: this.lastID, affectedRows: this.changes }]);
-      });
-    }
-  });
 };
 
 module.exports = { query, getClientType: () => dbClient, ensureDbReady };
