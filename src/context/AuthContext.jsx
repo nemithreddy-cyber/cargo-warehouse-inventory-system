@@ -3,7 +3,7 @@ import { canAccess, hasRole, DEMO_USERS } from '../config/permissions';
 
 const AuthContext = createContext(null);
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = '/api';
 
 // Storage key
 const STORAGE_KEY = 'cwis_user';

@@ -4,7 +4,7 @@ import { ROLES } from '../config/permissions';
 
 const TaskContext = createContext(null);
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = '/api';
 
 // ─── Sample offline data (used when backend is unavailable) ───
 const SAMPLE_TASKS = [

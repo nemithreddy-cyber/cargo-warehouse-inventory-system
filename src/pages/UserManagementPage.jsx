@@ -21,7 +21,7 @@ const OFFLINE_USERS = DEMO_USERS.map((u, i) => ({
   created_at: '2026-06-01T00:00:00Z',
 }));
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = '/api';
 
 function formatDate(dateStr) {
   if (!dateStr) return '—';
