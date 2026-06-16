@@ -8,7 +8,9 @@ let dbClient = 'mysql';
 let mysqlPool = null;
 let sqliteDb = null;
 
-const dbPath = path.join(__dirname, '..', 'database', 'cargo_inventory.db');
+const dbPath = process.env.VERCEL
+  ? '/tmp/cargo_inventory.db'
+  : path.join(__dirname, '..', 'database', 'cargo_inventory.db');
 
 // Ensure database folder exists
 const dbDir = path.dirname(dbPath);
