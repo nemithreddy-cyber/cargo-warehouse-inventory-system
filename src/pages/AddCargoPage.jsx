@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { MdSave, MdArrowBack, MdCheckCircle } from 'react-icons/md';
 import ToastContainer from '../components/ToastContainer';
-import { cargoTypeOptions, airportOptions, zoneOptions, statusOptions } from '../data/dummyData';
+import { cargoTypeOptions, airportOptions, zoneOptions, statusOptions } from '../config/options';
 import { useToast } from '../hooks/useToast';
+import api from '../utils/api';
 
 const initialForm = {
   customerName: '', customerPhone: '', cargoType: '', originAirport: '',
@@ -30,12 +31,18 @@ const inputClass = (hasError) =>
   }`;
 
 export default function AddCargoPage() {
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const isEdit = Boolean(id);
+
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  
+  const [zones, setZones] = useState([]);
+  const [locations, setLocations] = useState([]);
   const { toasts, success, error: toastError, removeToast } = useToast();
-  const navigate = useNavigate();
 
   const actualWeight = parseFloat(form.weight) || 0;
   const length = parseFloat(form.length) || 0;
@@ -43,6 +50,66 @@ export default function AddCargoPage() {
   const height = parseFloat(form.height) || 0;
   const chargeableWeight = (length * width * height) / 6000;
   const billingWeight = Math.max(actualWeight, chargeableWeight);
+
+  // Fetch zones and locations from backend on mount
+  useEffect(() => {
+    const fetchWarehouseConfig = async () => {
+      try {
+        const [zonesRes, locationsRes] = await Promise.all([
+          api.get('/warehouse/zones'),
+          api.get('/warehouse/locations'),
+        ]);
+        setZones(zonesRes.data.data?.zones || zonesRes.data.zones || []);
+        setLocations(locationsRes.data.data?.locations || locationsRes.data.locations || []);
+      } catch (err) {
+        console.error('Failed to fetch warehouse configuration', err);
+        toastError('Failed to fetch warehouse zones and locations from database');
+      }
+    };
+    fetchWarehouseConfig();
+  }, []);
+
+  // Fetch existing cargo details if in Edit Mode
+  useEffect(() => {
+    if (!isEdit) return;
+    const fetchCargoDetails = async () => {
+      setLoading(true);
+      try {
+        const res = await api.get(`/cargo/${id}`);
+        const c = res.data.data?.cargo || res.data.cargo;
+        if (c) {
+          // Map short codes (e.g. DXB) in DB back to full names in UI (e.g. DXB - Dubai International)
+          const matchedOrigin = airportOptions.find(o => o.startsWith(c.origin_airport)) || c.origin_airport || '';
+          const matchedDest = airportOptions.find(o => o.startsWith(c.destination_airport)) || c.destination_airport || '';
+          
+          setForm({
+            customerName: c.customer_name || '',
+            customerPhone: c.customer_phone || '',
+            cargoType: c.cargo_type || '',
+            originAirport: matchedOrigin,
+            destinationAirport: matchedDest,
+            pickupCity: c.pickup_city || '',
+            packageCount: c.package_count || '',
+            weight: c.weight || '',
+            length: c.length || '',
+            width: c.width || '',
+            height: c.height || '',
+            chargeableWeight: c.chargeable_weight || '',
+            storageLocation: c.location_code || '',
+            warehouseZone: c.zone_name ? c.zone_name.split(' - ')[0] : '',
+            arrivalDate: c.arrival_date ? c.arrival_date.split('T')[0] : '',
+            status: c.status || 'Received',
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load cargo details for editing', err);
+        toastError('Failed to load cargo details from server');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCargoDetails();
+  }, [id, isEdit]);
 
   const set = (key) => (e) => {
     setForm((prev) => {
@@ -62,14 +129,23 @@ export default function AddCargoPage() {
   };
 
   const validate = () => {
-    const req = { customerName: 'Customer name is required', customerPhone: 'Phone is required',
-      cargoType: 'Cargo type is required', originAirport: 'Origin airport is required',
-      destinationAirport: 'Destination is required', pickupCity: 'Pickup city is required',
-      packageCount: 'Package count is required', weight: 'Weight is required',
-      storageLocation: 'Storage location is required', warehouseZone: 'Zone is required',
-      arrivalDate: 'Arrival date is required' };
+    const req = {
+      customerName: 'Customer name is required',
+      customerPhone: 'Phone is required',
+      cargoType: 'Cargo type is required',
+      originAirport: 'Origin airport is required',
+      destinationAirport: 'Destination is required',
+      pickupCity: 'Pickup city is required',
+      packageCount: 'Package count is required',
+      weight: 'Weight is required',
+      storageLocation: 'Storage location is required',
+      warehouseZone: 'Zone is required',
+      arrivalDate: 'Arrival date is required',
+    };
     const errs = {};
-    Object.entries(req).forEach(([k, msg]) => { if (!form[k]) errs[k] = msg; });
+    Object.entries(req).forEach(([k, msg]) => {
+      if (!form[k]) errs[k] = msg;
+    });
     if (form.packageCount && isNaN(Number(form.packageCount))) errs.packageCount = 'Must be a number';
     if (form.weight && isNaN(Number(form.weight))) errs.weight = 'Must be a number';
     return errs;
@@ -78,13 +154,64 @@ export default function AddCargoPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const errs = validate();
-    if (Object.keys(errs).length) { setErrors(errs); toastError('Please fix the errors below.'); return; }
+
+    // Map zone name to database ID
+    const matchedZone = zones.find((z) =>
+      z.zone_name.toLowerCase().startsWith(form.warehouseZone.toLowerCase())
+    );
+    if (!matchedZone && form.warehouseZone) {
+      errs.warehouseZone = 'Selected zone not found in warehouse registry';
+    }
+
+    // Map location code to database ID
+    const matchedLoc = locations.find(
+      (l) => l.location_code.toLowerCase() === form.storageLocation.trim().toLowerCase()
+    );
+    if (!matchedLoc && form.storageLocation) {
+      errs.storageLocation = 'Storage location code not found in warehouse registry';
+    }
+
+    if (Object.keys(errs).length) {
+      setErrors(errs);
+      toastError('Please fix the errors below.');
+      return;
+    }
+
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setLoading(false);
-    setSubmitted(true);
-    success('Cargo added successfully! Redirecting...');
-    setTimeout(() => navigate('/cargo'), 2000);
+    try {
+      const payload = {
+        customer_name: form.customerName,
+        customer_phone: form.customerPhone,
+        cargo_type: form.cargoType,
+        origin_airport: form.originAirport.split(' - ')[0],
+        destination_airport: form.destinationAirport.split(' - ')[0],
+        pickup_city: form.pickupCity,
+        package_count: parseInt(form.packageCount, 10),
+        weight: parseFloat(form.weight),
+        length: parseFloat(form.length) || 0,
+        width: parseFloat(form.width) || 0,
+        height: parseFloat(form.height) || 0,
+        zone_id: matchedZone ? matchedZone.id : null,
+        location_id: matchedLoc ? matchedLoc.id : null,
+        status: form.status,
+        arrival_date: form.arrivalDate || null,
+      };
+
+      if (isEdit) {
+        await api.put(`/cargo/${id}`, payload);
+        success('Cargo record updated successfully! Redirecting...');
+      } else {
+        await api.post('/cargo', payload);
+        success('Cargo record added successfully! Redirecting...');
+      }
+      setSubmitted(true);
+      setTimeout(() => navigate('/cargo'), 2000);
+    } catch (err) {
+      console.error('Failed to save cargo', err);
+      toastError(err.response?.data?.message || 'Failed to save cargo record');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (submitted) {
@@ -93,7 +220,9 @@ export default function AddCargoPage() {
         <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
           <MdCheckCircle className="text-5xl text-green-500" />
         </div>
-        <h3 className="text-xl font-bold text-slate-800">Cargo Added Successfully!</h3>
+        <h3 className="text-xl font-bold text-slate-800">
+          Cargo {isEdit ? 'Updated' : 'Added'} Successfully!
+        </h3>
         <p className="text-slate-500 text-sm">Redirecting to cargo list...</p>
       </div>
     );
@@ -114,10 +243,17 @@ export default function AddCargoPage() {
 
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-slate-800">Add New Cargo</h2>
-          <p className="text-slate-500 text-sm">Fill in the cargo details below</p>
+          <h2 className="text-xl font-bold text-slate-800">
+            {isEdit ? 'Edit Cargo Details' : 'Add New Cargo'}
+          </h2>
+          <p className="text-slate-500 text-sm">
+            {isEdit ? `Modifying record: ${id}` : 'Fill in the cargo details below'}
+          </p>
         </div>
-        <button onClick={() => navigate('/cargo')} className="flex items-center gap-2 text-slate-600 hover:text-slate-800 px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-sm transition-colors">
+        <button
+          onClick={() => navigate('/cargo')}
+          className="flex items-center gap-2 text-slate-600 hover:text-slate-800 px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-sm transition-colors"
+        >
           <MdArrowBack /> Back to List
         </button>
       </div>
@@ -125,63 +261,155 @@ export default function AddCargoPage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <Section title="📋 Customer Information">
           <Field label="Customer Name" required error={errors.customerName}>
-            <input className={inputClass(errors.customerName)} value={form.customerName} onChange={set('customerName')} placeholder="e.g. Emirates Logistics LLC" />
+            <input
+              className={inputClass(errors.customerName)}
+              value={form.customerName}
+              onChange={set('customerName')}
+              placeholder="e.g. Emirates Logistics LLC"
+            />
           </Field>
           <Field label="Customer Phone" required error={errors.customerPhone}>
-            <input className={inputClass(errors.customerPhone)} value={form.customerPhone} onChange={set('customerPhone')} placeholder="+971 4 234 5678" />
+            <input
+              className={inputClass(errors.customerPhone)}
+              value={form.customerPhone}
+              onChange={set('customerPhone')}
+              placeholder="+971 4 234 5678"
+            />
           </Field>
           <Field label="Cargo Type" required error={errors.cargoType}>
-            <select className={inputClass(errors.cargoType)} value={form.cargoType} onChange={set('cargoType')}>
+            <select
+              className={inputClass(errors.cargoType)}
+              value={form.cargoType}
+              onChange={set('cargoType')}
+            >
               <option value="">Select type...</option>
-              {cargoTypeOptions.map((o) => <option key={o}>{o}</option>)}
+              {cargoTypeOptions.map((o) => (
+                <option key={o}>{o}</option>
+              ))}
             </select>
           </Field>
         </Section>
 
         <Section title="✈️ Flight & Route Information">
           <Field label="Origin Airport" required error={errors.originAirport}>
-            <select className={inputClass(errors.originAirport)} value={form.originAirport} onChange={set('originAirport')}>
+            <select
+              className={inputClass(errors.originAirport)}
+              value={form.originAirport}
+              onChange={set('originAirport')}
+            >
               <option value="">Select origin...</option>
-              {airportOptions.map((o) => <option key={o}>{o}</option>)}
+              {airportOptions.map((o) => (
+                <option key={o}>{o}</option>
+              ))}
             </select>
           </Field>
           <Field label="Destination Airport" required error={errors.destinationAirport}>
-            <select className={inputClass(errors.destinationAirport)} value={form.destinationAirport} onChange={set('destinationAirport')}>
+            <select
+              className={inputClass(errors.destinationAirport)}
+              value={form.destinationAirport}
+              onChange={set('destinationAirport')}
+            >
               <option value="">Select destination...</option>
-              {airportOptions.map((o) => <option key={o}>{o}</option>)}
+              {airportOptions.map((o) => (
+                <option key={o}>{o}</option>
+              ))}
             </select>
           </Field>
           <Field label="Pickup City" required error={errors.pickupCity}>
-            <input className={inputClass(errors.pickupCity)} value={form.pickupCity} onChange={set('pickupCity')} placeholder="e.g. Dubai" />
+            <input
+              className={inputClass(errors.pickupCity)}
+              value={form.pickupCity}
+              onChange={set('pickupCity')}
+              placeholder="e.g. Dubai"
+            />
           </Field>
           <Field label="Arrival Date" required error={errors.arrivalDate}>
-            <input type="date" className={inputClass(errors.arrivalDate)} value={form.arrivalDate} onChange={set('arrivalDate')} />
+            <input
+              type="date"
+              className={inputClass(errors.arrivalDate)}
+              value={form.arrivalDate}
+              onChange={set('arrivalDate')}
+            />
           </Field>
           <Field label="Status" required>
-            <select className={inputClass(false)} value={form.status} onChange={set('status')}>
-              {statusOptions.filter(s => s !== 'All').map((o) => <option key={o}>{o}</option>)}
+            <select
+              className={inputClass(false)}
+              value={form.status}
+              onChange={set('status')}
+            >
+              {statusOptions
+                .filter((s) => s !== 'All')
+                .map((o) => (
+                  <option key={o}>{o}</option>
+                ))}
             </select>
           </Field>
         </Section>
 
         <Section title="📦 Package & Weight Details">
           <Field label="Package Count" required error={errors.packageCount}>
-            <input type="number" min="1" className={inputClass(errors.packageCount)} value={form.packageCount} onChange={set('packageCount')} placeholder="e.g. 12" />
+            <input
+              type="number"
+              min="1"
+              className={inputClass(errors.packageCount)}
+              value={form.packageCount}
+              onChange={set('packageCount')}
+              placeholder="e.g. 12"
+            />
           </Field>
           <Field label="Weight (kg)" required error={errors.weight}>
-            <input type="number" step="0.1" min="0" className={inputClass(errors.weight)} value={form.weight} onChange={set('weight')} placeholder="e.g. 450.5" />
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              className={inputClass(errors.weight)}
+              value={form.weight}
+              onChange={set('weight')}
+              placeholder="e.g. 450.5"
+            />
           </Field>
           <Field label="Length (cm)">
-            <input type="number" step="0.1" min="0" className={inputClass(false)} value={form.length} onChange={set('length')} placeholder="e.g. 120" />
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              className={inputClass(false)}
+              value={form.length}
+              onChange={set('length')}
+              placeholder="e.g. 120"
+            />
           </Field>
           <Field label="Width (cm)">
-            <input type="number" step="0.1" min="0" className={inputClass(false)} value={form.width} onChange={set('width')} placeholder="e.g. 80" />
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              className={inputClass(false)}
+              value={form.width}
+              onChange={set('width')}
+              placeholder="e.g. 80"
+            />
           </Field>
           <Field label="Height (cm)">
-            <input type="number" step="0.1" min="0" className={inputClass(false)} value={form.height} onChange={set('height')} placeholder="e.g. 60" />
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              className={inputClass(false)}
+              value={form.height}
+              onChange={set('height')}
+              placeholder="e.g. 60"
+            />
           </Field>
           <Field label="Chargeable Weight (kg)">
-            <input type="number" step="0.01" className={`${inputClass(false)} bg-slate-50 text-slate-500`} value={form.chargeableWeight} readOnly placeholder="Auto-calculated" />
+            <input
+              type="number"
+              step="0.01"
+              className={`${inputClass(false)} bg-slate-50 text-slate-500`}
+              value={form.chargeableWeight}
+              readOnly
+              placeholder="Auto-calculated"
+            />
           </Field>
 
           {/* Dynamic Billing Weight Calculator Summary */}
@@ -217,18 +445,35 @@ export default function AddCargoPage() {
 
         <Section title="🏭 Storage Information">
           <Field label="Warehouse Zone" required error={errors.warehouseZone}>
-            <select className={inputClass(errors.warehouseZone)} value={form.warehouseZone} onChange={set('warehouseZone')}>
+            <select
+              className={inputClass(errors.warehouseZone)}
+              value={form.warehouseZone}
+              onChange={set('warehouseZone')}
+            >
               <option value="">Select zone...</option>
-              {zoneOptions.filter(z => z !== 'All').map((o) => <option key={o}>{o}</option>)}
+              {zoneOptions
+                .filter((z) => z !== 'All')
+                .map((o) => (
+                  <option key={o}>{o}</option>
+                ))}
             </select>
           </Field>
           <Field label="Storage Location" required error={errors.storageLocation}>
-            <input className={inputClass(errors.storageLocation)} value={form.storageLocation} onChange={set('storageLocation')} placeholder="e.g. A-01" />
+            <input
+              className={inputClass(errors.storageLocation)}
+              value={form.storageLocation}
+              onChange={set('storageLocation')}
+              placeholder="e.g. A-01"
+            />
           </Field>
         </Section>
 
         <div className="flex gap-3 justify-end">
-          <button type="button" onClick={() => setForm(initialForm)} className="px-6 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-colors">
+          <button
+            type="button"
+            onClick={() => setForm(initialForm)}
+            className="px-6 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-colors"
+          >
             Reset Form
           </button>
           <button
@@ -238,9 +483,14 @@ export default function AddCargoPage() {
             className="flex items-center gap-2 px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-colors shadow-sm disabled:opacity-70"
           >
             {loading ? (
-              <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> Saving...</>
+              <>
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>{' '}
+                Saving...
+              </>
             ) : (
-              <><MdSave /> Save Cargo</>
+              <>
+                <MdSave /> {isEdit ? 'Update Cargo' : 'Save Cargo'}
+              </>
             )}
           </button>
         </div>

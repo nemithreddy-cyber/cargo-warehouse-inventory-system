@@ -13,7 +13,7 @@ router.get('/:id', cargoController.getCargoById);
 
 router.post(
   '/',
-  requireRole('Admin', 'Warehouse Staff'),
+  requireRole('Super Admin', 'Warehouse Staff'),
   [
     body('customer_name').trim().notEmpty().withMessage('Customer name is required'),
     body('customer_phone').trim().notEmpty().withMessage('Customer phone is required'),
@@ -55,7 +55,7 @@ router.post(
 
 router.put(
   '/:id',
-  requireRole('Admin', 'Warehouse Staff'),
+  requireRole('Super Admin', 'Warehouse Staff', 'Operations Staff'),
   [
     body('customer_name').optional().trim().notEmpty().withMessage('Customer name cannot be empty'),
     body('customer_phone').optional().trim().notEmpty().withMessage('Customer phone cannot be empty'),
@@ -97,6 +97,6 @@ router.put(
   cargoController.updateCargo
 );
 
-router.delete('/:id', requireRole('Admin'), cargoController.deleteCargo);
+router.delete('/:id', requireRole('Super Admin'), cargoController.deleteCargo);
 
 module.exports = router;

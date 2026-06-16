@@ -31,17 +31,16 @@ const Cargo = {
   },
 
   /** Find single cargo by primary key. */
-  findById: async (id) => {
-    const [rows] = await db.query(
-      `SELECT c.*, wz.zone_name, sl.location_code,
+  findById: async (idOrCargoId) => {
+    const isCargoIdStr = typeof idOrCargoId === 'string' && idOrCargoId.startsWith('CRG-');
+    const queryStr = `SELECT c.*, wz.zone_name, sl.location_code,
               u.name AS created_by_name
        FROM cargo c
        LEFT JOIN warehouse_zones wz ON c.zone_id = wz.id
        LEFT JOIN storage_locations sl ON c.location_id = sl.id
        LEFT JOIN users u ON c.created_by = u.id
-       WHERE c.id = ?`,
-      [id]
-    );
+       WHERE ${isCargoIdStr ? 'c.cargo_id = ?' : 'c.id = ?'}`;
+    const [rows] = await db.query(queryStr, [idOrCargoId]);
     return rows[0] || null;
   },
 

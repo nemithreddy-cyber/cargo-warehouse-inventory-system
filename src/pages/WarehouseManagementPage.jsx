@@ -4,11 +4,13 @@ import StatusBadge from '../components/StatusBadge';
 import Modal from '../components/Modal';
 import ToastContainer from '../components/ToastContainer';
 import { SkeletonCard, SkeletonPulse } from '../components/SkeletonLoader';
-import { warehouseZones, storageLocations } from '../data/dummyData';
 import { useToast } from '../hooks/useToast';
+import api from '../utils/api';
 
 export default function WarehouseManagementPage() {
   const [loading, setLoading] = useState(true);
+  const [warehouseZones, setWarehouseZones] = useState([]);
+  const [storageLocations, setStorageLocations] = useState([]);
   const [activeZone, setActiveZone] = useState('All');
   const [showZoneModal, setShowZoneModal] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
@@ -17,9 +19,54 @@ export default function WarehouseManagementPage() {
   const [locationForm, setLocationForm] = useState({ id: '', zone: '', row: '', column: '', capacity: '' });
   const { toasts, success, removeToast } = useToast();
 
+  const fetchWarehouseData = async () => {
+    setLoading(true);
+    try {
+      const [zonesRes, locationsRes] = await Promise.all([
+        api.get('/warehouse/zones'),
+        api.get('/warehouse/locations'),
+      ]);
+      
+      const dbZones = zonesRes.data.data?.zones || zonesRes.data.zones || [];
+      const zoneColors = { 1: '#3b82f6', 2: '#10b981', 3: '#f59e0b', 4: '#ef4444', 5: '#8b5cf6' };
+      const zoneDescriptions = { 1: 'General Cargo - Dry Storage', 2: 'Temperature Controlled', 3: 'Heavy Cargo & Machinery', 4: 'High Value & Secure Storage', 5: 'Pharmaceuticals & Medical' };
+      const zoneTemperatures = { 1: 'Ambient', 2: '2-8°C', 3: 'Ambient', 4: 'Controlled', 5: '15-25°C' };
+
+      const mappedZones = dbZones.map((z) => ({
+        id: z.id,
+        name: z.zone_name.split(' - ')[0],
+        description: zoneDescriptions[z.id] || z.zone_name,
+        totalLocations: z.capacity,
+        occupiedLocations: z.occupied,
+        maxCapacity: z.capacity * 50,
+        currentLoad: z.occupied * 50,
+        temperature: zoneTemperatures[z.id] || 'Ambient',
+        color: zoneColors[z.id] || '#6b7280',
+      }));
+      setWarehouseZones(mappedZones);
+
+      const dbLocations = locationsRes.data.data?.locations || locationsRes.data.locations || [];
+      const mappedLocations = dbLocations.map((l) => ({
+        id: l.location_code,
+        db_id: l.id,
+        zone: l.zone_name ? l.zone_name.split(' - ')[0] : '',
+        row: l.location_code.split('-')[0],
+        column: parseInt(l.location_code.split('-')[1] || 0, 10),
+        status: l.status,
+        cargoId: l.cargo_id || null,
+        capacity: 500,
+        currentLoad: l.status === 'Occupied' ? 450 : 0,
+      }));
+      setStorageLocations(mappedLocations);
+    } catch (err) {
+      console.error('Failed to load warehouse data', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 700);
-    return () => clearTimeout(timer);
+    fetchWarehouseData();
   }, []);
 
   const filteredLocations = activeZone === 'All'
@@ -28,18 +75,45 @@ export default function WarehouseManagementPage() {
 
   const allZoneOptions = ['All', ...warehouseZones.map((z) => z.name)];
 
-  const handleCreateZone = (e) => {
+  const handleCreateZone = async (e) => {
     e.preventDefault();
-    success(`Zone "${zoneForm.name}" created successfully!`);
-    setShowZoneModal(false);
-    setZoneForm({ name: '', description: '', temperature: '', maxCapacity: '' });
+    try {
+      await api.post('/warehouse/zones', {
+        zone_name: zoneForm.name,
+        capacity: parseInt(zoneForm.maxCapacity, 10) || 100,
+      });
+      success(`Zone "${zoneForm.name}" created successfully!`);
+      fetchWarehouseData();
+      setShowZoneModal(false);
+      setZoneForm({ name: '', description: '', temperature: '', maxCapacity: '' });
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const handleCreateLocation = (e) => {
+  const handleCreateLocation = async (e) => {
     e.preventDefault();
-    success(`Storage location "${locationForm.id}" created in ${locationForm.zone}!`);
-    setShowLocationModal(false);
-    setLocationForm({ id: '', zone: '', row: '', column: '', capacity: '' });
+    try {
+      const zoneNamePart = locationForm.zone;
+      const zonesRes = await api.get('/warehouse/zones');
+      const dbZones = zonesRes.data.data?.zones || zonesRes.data.zones || [];
+      const foundZone = dbZones.find(z => z.zone_name.startsWith(zoneNamePart));
+      if (!foundZone) {
+        throw new Error('Zone not found');
+      }
+
+      await api.post('/warehouse/locations', {
+        zone_id: foundZone.id,
+        location_code: locationForm.id,
+        status: 'Available',
+      });
+      success(`Storage location "${locationForm.id}" created in ${locationForm.zone}!`);
+      fetchWarehouseData();
+      setShowLocationModal(false);
+      setLocationForm({ id: '', zone: '', row: '', column: '', capacity: '' });
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (

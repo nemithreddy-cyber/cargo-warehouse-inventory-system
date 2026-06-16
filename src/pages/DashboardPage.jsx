@@ -14,9 +14,9 @@ import { SkeletonCard, SkeletonPulse } from '../components/SkeletonLoader';
 import { useNotifications } from '../context/NotificationContext';
 import { useTasks } from '../context/TaskContext';
 import { useAuth } from '../context/AuthContext';
-import { dashboardStats, cargoData, warehouseZones, dispatchRecords } from '../data/dummyData';
 import { formatDate, getActivityColor, getActivityIcon } from '../utils/helpers';
 import { ROLES } from '../config/permissions';
+import api from '../utils/api';
 
 // ─── Shared helpers ────────────────────────────────────────────
 const PRIORITY_COLORS = {
@@ -90,8 +90,11 @@ function AssignedTasksWidget({ myTasks, navigate }) {
 }
 
 // ─── Super Admin Dashboard (full view) ────────────────────────
-function SuperAdminDashboard({ navigate, notifications, loading }) {
+function SuperAdminDashboard({ navigate, notifications, data }) {
   const { myTasks, pendingCount, inProgressCount } = useTasks();
+  const cargoData = data.recentCargo || [];
+  const warehouseZones = data.warehouseZones || [];
+  const dashboardStats = data;
   const recentCargo = cargoData.slice(0, 5);
   const recentNotifs = notifications.slice(0, 5);
 
@@ -265,10 +268,13 @@ function SuperAdminDashboard({ navigate, notifications, loading }) {
 }
 
 // ─── Warehouse Staff Dashboard ─────────────────────────────────
-function WarehouseStaffDashboard({ navigate }) {
+function WarehouseStaffDashboard({ navigate, data }) {
   const { myTasks, pendingCount, inProgressCount, completedCount } = useTasks();
+  const cargoData = data.recentCargo || [];
+  const warehouseZones = data.warehouseZones || [];
+  const dashboardStats = data;
   const storedCargo = cargoData.filter((c) => c.status === 'Stored');
-  const readyCargo = cargoData.filter((c) => c.status === 'Ready for Dispatch');
+  const readyCargo = cargoData.filter((c) => c.status === 'Ready for Dispatch' || c.status === 'Ready For Dispatch');
 
   const stats = [
     { title: 'Stored Cargo', value: dashboardStats.storedCargo, icon: MdWarehouse, bgColor: 'bg-purple-50', color: 'text-purple-600', trend: 'neutral', trendValue: 'stable' },
@@ -342,10 +348,13 @@ function WarehouseStaffDashboard({ navigate }) {
 }
 
 // ─── Operations Staff Dashboard ────────────────────────────────
-function OperationsStaffDashboard({ navigate }) {
+function OperationsStaffDashboard({ navigate, data }) {
   const { myTasks } = useTasks();
+  const cargoData = data.recentCargo || [];
+  const dispatchRecords = data.dispatchRecords || [];
+  const dashboardStats = data;
   const dispatched = dispatchRecords.filter((d) => d.status === 'In Transit');
-  const readyCargo = cargoData.filter((c) => c.status === 'Ready for Dispatch');
+  const readyCargo = cargoData.filter((c) => c.status === 'Ready for Dispatch' || c.status === 'Ready For Dispatch');
 
   const stats = [
     { title: 'In Transit', value: dispatched.length, icon: MdLocalShipping, bgColor: 'bg-orange-50', color: 'text-orange-600', trend: 'up', trendValue: 'active' },
@@ -409,8 +418,10 @@ function OperationsStaffDashboard({ navigate }) {
 }
 
 // ─── Documentation Executive Dashboard ────────────────────────
-function DocumentationDashboard({ navigate }) {
+function DocumentationDashboard({ navigate, data }) {
   const { myTasks } = useTasks();
+  const cargoData = data.recentCargo || [];
+  const dashboardStats = data;
   const recentCargo = cargoData.slice(0, 6);
 
   return (
@@ -475,8 +486,10 @@ function DocumentationDashboard({ navigate }) {
 }
 
 // ─── Accounts Staff Dashboard ──────────────────────────────────
-function AccountsDashboard({ navigate }) {
+function AccountsDashboard({ navigate, data }) {
   const { myTasks } = useTasks();
+  const cargoData = data.recentCargo || [];
+  const dashboardStats = data;
   const totalWeight = dashboardStats.totalWeight;
   const totalChargeableWeight = cargoData.reduce((s, c) => s + (c.chargeableWeight || 0), 0);
 
@@ -564,18 +577,28 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const { notifications } = useNotifications();
   const { user } = useAuth();
+  const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 700);
-    return () => clearTimeout(t);
+    const fetchDashboard = async () => {
+      try {
+        const res = await api.get('/dashboard');
+        setDashboardData(res.data.data || res.data);
+      } catch (err) {
+        console.error('Failed to load dashboard', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDashboard();
   }, []);
 
   const role = user?.role || ROLES.WAREHOUSE_STAFF;
   const bannerGradient = BANNER_COLORS[role] || BANNER_COLORS[ROLES.WAREHOUSE_STAFF];
   const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
-  if (loading) {
+  if (loading || !dashboardData) {
     return (
       <div className="space-y-6">
         <div className="bg-slate-200 animate-pulse rounded-2xl h-40 w-full" />
@@ -594,6 +617,9 @@ export default function DashboardPage() {
     );
   }
 
+  const displayWeight = dashboardData.totalWeight || 0;
+  const displayGrowth = dashboardData.monthlyGrowth || 0;
+
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
@@ -611,22 +637,22 @@ export default function DashboardPage() {
             </div>
             <div className="bg-white/20 rounded-xl px-4 py-2">
               <p className="text-xs text-blue-200">Total Weight</p>
-              <p className="text-sm font-bold">{(dashboardStats.totalWeight / 1000).toFixed(1)}t</p>
+              <p className="text-sm font-bold">{(displayWeight / 1000).toFixed(1)}t</p>
             </div>
             <div className="bg-white/20 rounded-xl px-4 py-2">
               <p className="text-xs text-blue-200">Monthly Growth</p>
-              <p className="text-sm font-bold text-green-300">+{dashboardStats.monthlyGrowth}%</p>
+              <p className="text-sm font-bold text-green-300">+{displayGrowth}%</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Role-scoped content */}
-      {role === ROLES.SUPER_ADMIN        && <SuperAdminDashboard navigate={navigate} notifications={notifications} loading={loading} />}
-      {role === ROLES.WAREHOUSE_STAFF    && <WarehouseStaffDashboard navigate={navigate} />}
-      {role === ROLES.OPERATIONS_STAFF   && <OperationsStaffDashboard navigate={navigate} />}
-      {role === ROLES.DOCUMENTATION_EXEC && <DocumentationDashboard navigate={navigate} />}
-      {role === ROLES.ACCOUNTS_STAFF     && <AccountsDashboard navigate={navigate} />}
+      {role === ROLES.SUPER_ADMIN        && <SuperAdminDashboard navigate={navigate} notifications={notifications} data={dashboardData} />}
+      {role === ROLES.WAREHOUSE_STAFF    && <WarehouseStaffDashboard navigate={navigate} data={dashboardData} />}
+      {role === ROLES.OPERATIONS_STAFF   && <OperationsStaffDashboard navigate={navigate} data={dashboardData} />}
+      {role === ROLES.DOCUMENTATION_EXEC && <DocumentationDashboard navigate={navigate} data={dashboardData} />}
+      {role === ROLES.ACCOUNTS_STAFF     && <AccountsDashboard navigate={navigate} data={dashboardData} />}
     </div>
   );
 }

@@ -150,7 +150,7 @@ const updateCargo = async (id, data, userId) => {
     await Warehouse.updateLocationStatus(data.location_id, 'Occupied');
   }
 
-  await Cargo.update(id, data);
+  await Cargo.update(existing.id, data);
 
   // Status-based notifications
   if (data.status === 'Ready For Dispatch') {
@@ -174,7 +174,7 @@ const updateCargo = async (id, data, userId) => {
     description: `Cargo ${existing.cargo_id} updated`,
   });
 
-  return Cargo.findById(id);
+  return Cargo.findById(existing.id);
 };
 
 /**
@@ -187,7 +187,7 @@ const deleteCargo = async (id, userId) => {
   if (existing.zone_id) await Warehouse.updateZoneOccupancy(existing.zone_id, -1);
   if (existing.location_id) await Warehouse.updateLocationStatus(existing.location_id, 'Available');
 
-  await Cargo.delete(id);
+  await Cargo.delete(existing.id);
 
   await ActivityLog.create({
     user_id: userId,

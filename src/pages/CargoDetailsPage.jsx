@@ -1,9 +1,11 @@
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MdArrowBack, MdEdit, MdLocalShipping, MdWarehouse, MdFlightLand, MdPhone, MdCalendarToday, MdHistory, MdPerson } from 'react-icons/md';
+import { MdArrowBack, MdEdit, MdLocalShipping, MdWarehouse, MdFlightLand, MdPhone, MdCalendarToday, MdPerson } from 'react-icons/md';
 import { FaBoxes, FaRuler, FaWeight } from 'react-icons/fa';
 import StatusBadge from '../components/StatusBadge';
-import { cargoData, dispatchRecords, activityLogs } from '../data/dummyData';
 import { formatDate, formatWeight } from '../utils/helpers';
+import { useAuth } from '../context/AuthContext';
+import api from '../utils/api';
 
 const InfoRow = ({ icon: Icon, label, value }) => (
   <div className="flex items-start gap-3 py-3 border-b border-slate-50 last:border-0">
@@ -20,10 +22,108 @@ const InfoRow = ({ icon: Icon, label, value }) => (
 export default function CargoDetailsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   
-  const cargo = cargoData.find((c) => c.id === id);
-  const dispatch = dispatchRecords.find((d) => d.cargoId === id);
-  const relatedLogs = activityLogs.filter((log) => log.details.includes(id));
+  const [loading, setLoading] = useState(true);
+  const [cargo, setCargo] = useState(null);
+  const [dispatch, setDispatch] = useState(null);
+  const [relatedLogs, setRelatedLogs] = useState([]);
+
+  const canEdit = user?.role === 'Super Admin' || user?.role === 'Warehouse Staff' || user?.role === 'Operations Staff';
+
+  useEffect(() => {
+    const fetchDetails = async () => {
+      setLoading(true);
+      try {
+        // Fetch cargo details
+        const cargoRes = await api.get(`/cargo/${id}`);
+        const c = cargoRes.data.data?.cargo || cargoRes.data.cargo;
+        
+        if (c) {
+          const mappedCargo = {
+            id: c.cargo_id,
+            db_id: c.id,
+            customerName: c.customer_name,
+            customerPhone: c.customer_phone,
+            cargoType: c.cargo_type,
+            originAirport: c.origin_airport,
+            destinationAirport: c.destination_airport,
+            pickupCity: c.pickup_city,
+            packageCount: c.package_count,
+            weight: parseFloat(c.weight),
+            length: parseFloat(c.length),
+            width: parseFloat(c.width),
+            height: parseFloat(c.height),
+            chargeableWeight: parseFloat(c.chargeable_weight),
+            billingWeight: parseFloat(c.billing_weight),
+            storageLocation: c.location_code || 'Unassigned',
+            warehouseZone: c.zone_name ? c.zone_name.split(' - ')[0] : 'Unassigned',
+            arrivalDate: c.arrival_date,
+            status: c.status,
+            dispatchDate: c.dispatch_date,
+            deliveryDate: c.dispatch_date,
+          };
+          setCargo(mappedCargo);
+
+          // Fetch related dispatches
+          try {
+            const dispatchRes = await api.get('/dispatch');
+            const dispatches = dispatchRes.data.data || dispatchRes.data || [];
+            const matchedDispatch = dispatches.find(
+              (d) => d.cargoId === mappedCargo.db_id || d.cargo_ref === mappedCargo.id
+            );
+            if (matchedDispatch) {
+              setDispatch({
+                id: matchedDispatch.dispatch_id || matchedDispatch.id,
+                driverName: matchedDispatch.driver_name,
+                vehicleNumber: matchedDispatch.vehicle_number,
+                estimatedDelivery: matchedDispatch.expected_delivery,
+                lastLocation: matchedDispatch.status === 'Delivered' ? 'Delivered' : 'In Transit',
+              });
+            }
+          } catch (dispErr) {
+            console.error('Failed to load related dispatch info', dispErr);
+          }
+
+          // Fetch related activity logs by searching for the cargo ID (e.g. CRG-20240001)
+          try {
+            const logsRes = await api.get('/activity-logs', { params: { search: mappedCargo.id } });
+            const dbLogs = logsRes.data.data || [];
+            const mappedLogs = dbLogs.map((l) => {
+              const createdAt = new Date(l.created_at);
+              return {
+                id: l.id,
+                user: l.user_name || 'System',
+                action: l.action,
+                details: l.description,
+                date: createdAt.toLocaleDateString('en-CA'),
+                time: createdAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+                statusChange: l.action === 'CARGO_UPDATED' ? 'Updated' : 'N/A',
+              };
+            });
+            setRelatedLogs(mappedLogs);
+          } catch (logErr) {
+            console.error('Failed to load related activity logs', logErr);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch cargo details', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDetails();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-4">
+        <span className="w-12 h-12 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin"></span>
+        <p className="text-slate-500 text-sm font-medium">Loading cargo details...</p>
+      </div>
+    );
+  }
 
   if (!cargo) {
     return (
@@ -39,7 +139,7 @@ export default function CargoDetailsPage() {
   }
 
   // Calculate dynamic timeline states
-  const statuses = ['Received', 'Stored', 'Ready for Dispatch', 'Dispatched', 'Delivered'];
+  const statuses = ['Received', 'Stored', 'Ready For Dispatch', 'Dispatched', 'Delivered'];
   const currentIdx = statuses.indexOf(cargo.status);
   
   const dynamicTimeline = [
@@ -58,7 +158,7 @@ export default function CargoDetailsPage() {
       done: currentIdx >= 1 
     },
     { 
-      status: 'Ready for Dispatch', 
+      status: 'Ready For Dispatch', 
       date: currentIdx >= 2 ? (cargo.dispatchDate || 'Pending scheduling') : null, 
       time: '10:00', 
       desc: 'Packaging verified and ready to be loaded', 
@@ -93,15 +193,17 @@ export default function CargoDetailsPage() {
               <h2 className="text-xl font-bold text-slate-800">{cargo.id}</h2>
               <StatusBadge status={cargo.status} size="md" />
             </div>
-            <p className="text-slate-500 text-sm">{cargo.customerName}</p>
+            <p className="text-slate-500 text-sm font-semibold">{cargo.customerName}</p>
           </div>
         </div>
-        <button
-          onClick={() => navigate(`/cargo/${cargo.id}/edit`)}
-          className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-medium text-sm transition-colors"
-        >
-          <MdEdit /> Edit Cargo
-        </button>
+        {canEdit && (
+          <button
+            onClick={() => navigate(`/cargo/${cargo.id}/edit`)}
+            className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-medium text-sm transition-colors"
+          >
+            <MdEdit /> Edit Cargo
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -128,7 +230,7 @@ export default function CargoDetailsPage() {
             <div className="p-6">
               <div className="flex items-center justify-between bg-blue-50/50 border border-blue-100/50 rounded-2xl p-5 mb-4">
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-blue-800">{cargo.originAirport}</p>
+                  <p className="text-2xl font-bold text-blue-800">{cargo.originAirport?.split(' - ')[0] || cargo.originAirport}</p>
                   <p className="text-xs text-slate-500 mt-1">Origin</p>
                   <p className="text-sm text-slate-600 font-semibold mt-0.5">{cargo.pickupCity}</p>
                 </div>
@@ -140,7 +242,7 @@ export default function CargoDetailsPage() {
                   </div>
                 </div>
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-blue-800">{cargo.destinationAirport}</p>
+                  <p className="text-2xl font-bold text-blue-800">{cargo.destinationAirport?.split(' - ')[0] || cargo.destinationAirport}</p>
                   <p className="text-xs text-slate-500 mt-1">Destination</p>
                 </div>
               </div>
@@ -187,7 +289,7 @@ export default function CargoDetailsPage() {
                     <tr className="bg-slate-50 border-b border-slate-100">
                       <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3">User</th>
                       <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3">Action</th>
-                      <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3">Status Change</th>
+                      <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3">Details</th>
                       <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3">Timestamp</th>
                     </tr>
                   </thead>
@@ -196,14 +298,8 @@ export default function CargoDetailsPage() {
                       <tr key={log.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-5 py-3 text-sm font-medium text-slate-700">{log.user}</td>
                         <td className="px-5 py-3 text-sm text-slate-600">{log.action}</td>
-                        <td className="px-5 py-3">
-                          {log.statusChange !== 'N/A' ? (
-                            <span className="text-xs bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-full border border-blue-100 font-semibold">{log.statusChange}</span>
-                          ) : (
-                            <span className="text-xs text-slate-400">—</span>
-                          )}
-                        </td>
-                        <td className="px-5 py-3 text-xs text-slate-500">{log.date} {log.time}</td>
+                        <td className="px-5 py-3 text-sm text-slate-500 max-w-[200px] truncate">{log.details}</td>
+                        <td className="px-5 py-3 text-xs text-slate-500">{formatDate(log.date)} {log.time}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -273,7 +369,7 @@ export default function CargoDetailsPage() {
             <div className="p-6">
               <div className="relative pl-1">
                 {dynamicTimeline.map((step, idx) => {
-                  const isCurrent = step.status === cargo.status;
+                  const isCurrent = step.status.toLowerCase() === cargo.status.toLowerCase();
                   return (
                     <div key={step.status} className="flex gap-4 pb-6 last:pb-0 relative">
                       <div className="flex flex-col items-center">

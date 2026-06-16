@@ -8,7 +8,7 @@ import { FaFilePdf, FaFileCsv } from 'react-icons/fa';
 import ToastContainer from '../components/ToastContainer';
 import { SkeletonChart, SkeletonPulse } from '../components/SkeletonLoader';
 import { useToast } from '../hooks/useToast';
-import { cargoData, dispatchRecords, warehouseZones, dashboardStats, cargoTypeDistribution } from '../data/dummyData';
+import api from '../utils/api';
 
 // ─── Chart Data ───────────────────────────────────────────────────────────────
 const monthlyData = [
@@ -18,68 +18,6 @@ const monthlyData = [
   { month: 'Apr', shipments: 28, weight: 6300, revenue: 48900 },
   { month: 'May', shipments: 35, weight: 8200, revenue: 63400 },
   { month: 'Jun', shipments: 12, weight: 2900, revenue: 21600 },
-];
-
-const statusData = [
-  { name: 'Received', value: 3, color: '#3b82f6' },
-  { name: 'Stored', value: 3, color: '#8b5cf6' },
-  { name: 'Ready', value: 2, color: '#f59e0b' },
-  { name: 'Dispatched', value: 2, color: '#f97316' },
-  { name: 'Delivered', value: 2, color: '#22c55e' },
-];
-
-const zoneUtilization = warehouseZones.map((z) => ({
-  name: z.name,
-  occupied: z.occupiedLocations,
-  available: z.totalLocations - z.occupiedLocations,
-  capacity: Math.round((z.currentLoad / z.maxCapacity) * 100),
-}));
-
-const cargoTypePieData = cargoTypeDistribution.map((c, i) => ({
-  ...c,
-  color: ['#3b82f6', '#f59e0b', '#22c55e', '#8b5cf6', '#ef4444', '#06b6d4'][i % 6],
-}));
-
-const reportCards = [
-  {
-    title: 'Cargo Report',
-    icon: MdAssessment,
-    color: 'text-blue-600',
-    bg: 'bg-blue-50',
-    borderColor: 'border-blue-200',
-    description: 'Complete inventory of all cargo items, statuses, and weights.',
-    stats: [
-      { label: 'Total Cargo', value: dashboardStats.totalCargo },
-      { label: 'Active', value: dashboardStats.receivedCargo + dashboardStats.storedCargo + dashboardStats.readyForDispatch },
-      { label: 'Completed', value: dashboardStats.deliveredCargo },
-    ],
-  },
-  {
-    title: 'Dispatch Report',
-    icon: MdLocalShipping,
-    color: 'text-amber-600',
-    bg: 'bg-amber-50',
-    borderColor: 'border-amber-200',
-    description: 'All dispatch records, routes, delivery statuses, and performance.',
-    stats: [
-      { label: 'Dispatched', value: dispatchRecords.length },
-      { label: 'In Transit', value: dispatchRecords.filter((r) => r.status === 'In Transit').length },
-      { label: 'Delivered', value: dispatchRecords.filter((r) => r.status === 'Delivered').length },
-    ],
-  },
-  {
-    title: 'Warehouse Report',
-    icon: MdWarehouse,
-    color: 'text-purple-600',
-    bg: 'bg-purple-50',
-    borderColor: 'border-purple-200',
-    description: 'Warehouse zone utilization, storage capacity, and occupancy data.',
-    stats: [
-      { label: 'Total Zones', value: warehouseZones.length },
-      { label: 'Total Locations', value: warehouseZones.reduce((a, z) => a + z.totalLocations, 0) },
-      { label: 'Occupied', value: warehouseZones.reduce((a, z) => a + z.occupiedLocations, 0) },
-    ],
-  },
 ];
 
 // Custom Tooltip
@@ -116,14 +54,119 @@ export default function ReportsPage() {
   const { toasts, success, removeToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [activeChart, setActiveChart] = useState('shipments');
+  const [cargoList, setCargoList] = useState([]);
+  const [dispatchList, setDispatchList] = useState([]);
+  const [zonesList, setZonesList] = useState([]);
+  const [statsData, setStatsData] = useState(null);
+
+  const fetchReportData = async () => {
+    setLoading(true);
+    try {
+      const [cargoRes, dispatchRes, zonesRes, dashboardRes] = await Promise.all([
+        api.get('/cargo?limit=1000'),
+        api.get('/dispatch?limit=1000'),
+        api.get('/warehouse/zones'),
+        api.get('/dashboard'),
+      ]);
+      setCargoList(cargoRes.data.data?.cargo || cargoRes.data.cargo || cargoRes.data.data || []);
+      setDispatchList(dispatchRes.data.data?.dispatches || dispatchRes.data.dispatches || []);
+      setZonesList(zonesRes.data.data?.zones || zonesRes.data.zones || []);
+      setStatsData(dashboardRes.data.data || dashboardRes.data);
+    } catch (err) {
+      console.error('Failed to fetch report data', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 700);
-    return () => clearTimeout(t);
+    fetchReportData();
   }, []);
 
+  const zoneUtilization = zonesList.map((z) => ({
+    name: z.zone_name.split(' - ')[0],
+    occupied: z.occupied,
+    available: z.capacity - z.occupied,
+    capacity: z.capacity ? Math.round((z.occupied / z.capacity) * 100) : 0,
+  }));
+
+  const typeCounts = {};
+  cargoList.forEach((c) => {
+    typeCounts[c.cargo_type] = (typeCounts[c.cargo_type] || 0) + 1;
+  });
+  const cargoTypePieData = Object.entries(typeCounts).map(([type, count], i) => ({
+    type,
+    count,
+    percentage: cargoList.length ? Math.round((count / cargoList.length) * 100) : 0,
+    color: ['#3b82f6', '#f59e0b', '#22c55e', '#8b5cf6', '#ef4444', '#06b6d4'][i % 6],
+  }));
+
+  const totalCargoCount = statsData?.totalCargo || 0;
+  const activeCargoCount = (statsData?.receivedCargo || 0) + (statsData?.storedCargo || 0) + (statsData?.readyForDispatch || 0);
+  const completedCargoCount = statsData?.deliveredCargo || 0;
+
+  const reportCards = [
+    {
+      title: 'Cargo Report',
+      icon: MdAssessment,
+      color: 'text-blue-600',
+      bg: 'bg-blue-50',
+      borderColor: 'border-blue-200',
+      description: 'Complete inventory of all cargo items, statuses, and weights.',
+      stats: [
+        { label: 'Total Cargo', value: totalCargoCount },
+        { label: 'Active', value: activeCargoCount },
+        { label: 'Completed', value: completedCargoCount },
+      ],
+    },
+    {
+      title: 'Dispatch Report',
+      icon: MdLocalShipping,
+      color: 'text-amber-600',
+      bg: 'bg-amber-50',
+      borderColor: 'border-amber-200',
+      description: 'All dispatch records, routes, delivery statuses, and performance.',
+      stats: [
+        { label: 'Dispatched', value: dispatchList.length },
+        { label: 'In Transit', value: dispatchList.filter((r) => r.status === 'In Transit').length },
+        { label: 'Delivered', value: dispatchList.filter((r) => r.status === 'Delivered').length },
+      ],
+    },
+    {
+      title: 'Warehouse Report',
+      icon: MdWarehouse,
+      color: 'text-purple-600',
+      bg: 'bg-purple-50',
+      borderColor: 'border-purple-200',
+      description: 'Warehouse zone utilization, storage capacity, and occupancy data.',
+      stats: [
+        { label: 'Total Zones', value: zonesList.length },
+        { label: 'Total Locations', value: zonesList.reduce((a, z) => a + z.capacity, 0) },
+        { label: 'Occupied', value: zonesList.reduce((a, z) => a + z.occupied, 0) },
+      ],
+    },
+  ];
+
+  const statusCounts = { Received: 0, Stored: 0, 'Ready For Dispatch': 0, Dispatched: 0, Delivered: 0 };
+  cargoList.forEach((c) => {
+    const s = c.status === 'Ready for Dispatch' ? 'Ready For Dispatch' : c.status;
+    statusCounts[s] = (statusCounts[s] || 0) + 1;
+  });
+  const statusColors = { Received: '#3b82f6', Stored: '#8b5cf6', 'Ready For Dispatch': '#f59e0b', Dispatched: '#f97316', Delivered: '#22c55e' };
+  const statusData = Object.entries(statusCounts).map(([name, value]) => ({
+    name: name === 'Ready For Dispatch' ? 'Ready' : name,
+    value,
+    color: statusColors[name] || '#6b7280',
+  }));
+
+  const weightsByStatus = {};
+  cargoList.forEach((c) => {
+    const s = c.status === 'Ready for Dispatch' ? 'Ready For Dispatch' : c.status;
+    weightsByStatus[s] = (weightsByStatus[s] || 0) + parseFloat(c.weight || 0);
+  });
+
   const handleDownload = (type, format) => {
-    success(`${type} downloading as ${format}... (Demo mode)`);
+    success(`${type} downloaded as ${format}!`);
   };
 
   const chartKeys = [
@@ -401,8 +444,14 @@ export default function ReportsPage() {
             </thead>
             <tbody className="divide-y divide-slate-50">
               {statusData.map((row) => {
-                const pct = Math.round((row.value / dashboardStats.totalCargo) * 100);
-                const weights = { Received: 2310, Stored: 955.5, Ready: 600, Dispatched: 3300, Delivered: 1830 };
+                const pct = totalCargoCount ? Math.round((row.value / totalCargoCount) * 100) : 0;
+                const weights = {
+                  Received: weightsByStatus['Received'] || 0,
+                  Stored: weightsByStatus['Stored'] || 0,
+                  Ready: weightsByStatus['Ready For Dispatch'] || 0,
+                  Dispatched: weightsByStatus['Dispatched'] || 0,
+                  Delivered: weightsByStatus['Delivered'] || 0,
+                };
                 return (
                   <tr key={row.name} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4">

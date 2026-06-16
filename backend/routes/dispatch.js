@@ -13,7 +13,7 @@ router.get('/:id', dispatchController.getDispatchById);
 
 router.post(
   '/',
-  requireRole('Admin', 'Operations Staff'),
+  requireRole('Super Admin', 'Operations Staff'),
   [
     body('cargo_id').isInt().withMessage('Cargo ID must be an integer'),
     body('driver_name').trim().notEmpty().withMessage('Driver name is required'),
@@ -31,7 +31,7 @@ router.post(
 
 router.put(
   '/:id',
-  requireRole('Admin', 'Operations Staff'),
+  requireRole('Super Admin', 'Operations Staff'),
   [
     body('driver_name').optional().trim().notEmpty().withMessage('Driver name cannot be empty'),
     body('vehicle_number').optional().trim().notEmpty().withMessage('Vehicle number cannot be empty'),

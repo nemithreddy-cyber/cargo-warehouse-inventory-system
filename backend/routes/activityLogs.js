@@ -4,6 +4,6 @@ const { authenticate, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.get('/', authenticate, requireRole('Admin'), activityLogController.getActivityLogs);
+router.get('/', authenticate, requireRole('Super Admin'), activityLogController.getActivityLogs);
 
 module.exports = router;

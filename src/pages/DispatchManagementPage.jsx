@@ -1,33 +1,56 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MdLocalShipping, MdEdit, MdVisibility, MdCheckCircle, MdFlightLand } from 'react-icons/md';
+import { MdLocalShipping, MdEdit, MdVisibility, MdCheckCircle } from 'react-icons/md';
 import StatusBadge from '../components/StatusBadge';
 import Modal from '../components/Modal';
 import SearchBar from '../components/SearchBar';
 import ToastContainer from '../components/ToastContainer';
 import { SkeletonTable } from '../components/SkeletonLoader';
-import { dispatchRecords } from '../data/dummyData';
 import { formatDate } from '../utils/helpers';
 import { useToast } from '../hooks/useToast';
+import api from '../utils/api';
 
-const statusFlow = ['Pending', 'In Transit', 'Customs Clearance', 'Out for Delivery', 'Delivered'];
+const statusFlow = ['Scheduled', 'In Transit', 'Delivered', 'Delayed', 'Cancelled'];
 
 export default function DispatchManagementPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [records, setRecords] = useState(dispatchRecords);
+  const [records, setRecords] = useState([]);
   const [search, setSearch] = useState('');
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 600);
-    return () => clearTimeout(timer);
-  }, []);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [editRecord, setEditRecord] = useState(null);
   const [newStatus, setNewStatus] = useState('');
   const { toasts, success, removeToast } = useToast();
+
+  const fetchDispatches = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/dispatch?limit=100');
+      const list = res.data.data?.dispatches || res.data.dispatches || [];
+      const mapped = list.map((d) => ({
+        id: d.dispatch_id,
+        db_id: d.id,
+        cargoId: d.cargo_ref || String(d.cargo_id),
+        customerName: d.customer_name || 'N/A',
+        destination: d.destination_airport || 'N/A',
+        vehicleNumber: d.vehicle_number,
+        driverName: d.driver_name,
+        dispatchDate: d.dispatch_date,
+        estimatedDelivery: d.expected_delivery,
+        status: d.status,
+        lastLocation: d.status === 'Delivered' ? 'Delivered' : 'In Transit',
+      }));
+      setRecords(mapped);
+    } catch (err) {
+      console.error('Failed to load dispatches', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDispatches();
+  }, []);
 
   const filtered = records.filter((r) =>
     !search ||
@@ -36,19 +59,24 @@ export default function DispatchManagementPage() {
     r.customerName.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleUpdateStatus = () => {
+  const handleUpdateStatus = async () => {
     if (!newStatus) return;
-    setRecords((prev) => prev.map((r) => r.id === editRecord.id ? { ...r, status: newStatus } : r));
-    success(`Status updated to "${newStatus}"`);
-    setEditRecord(null);
-    setNewStatus('');
+    try {
+      await api.put(`/dispatch/${editRecord.db_id}`, { status: newStatus });
+      success(`Status updated to "${newStatus}"`);
+      fetchDispatches();
+      setEditRecord(null);
+      setNewStatus('');
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const summaryStats = [
     { label: 'Total Dispatched', value: records.length, color: 'bg-blue-50 text-blue-700' },
     { label: 'In Transit', value: records.filter(r => r.status === 'In Transit').length, color: 'bg-amber-50 text-amber-700' },
     { label: 'Delivered', value: records.filter(r => r.status === 'Delivered').length, color: 'bg-green-50 text-green-700' },
-    { label: 'Pending', value: records.filter(r => r.status === 'Pending').length, color: 'bg-slate-50 text-slate-700' },
+    { label: 'Pending/Scheduled', value: records.filter(r => r.status === 'Scheduled' || r.status === 'Pending').length, color: 'bg-slate-50 text-slate-700' },
   ];
 
   return (

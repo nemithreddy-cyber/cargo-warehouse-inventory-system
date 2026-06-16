@@ -1,16 +1,28 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MdDownload, MdFilterList, MdClose, MdCalendarToday } from 'react-icons/md';
 import SearchBar from '../components/SearchBar';
 import FilterSelect from '../components/FilterSelect';
 import Pagination from '../components/Pagination';
 import Modal from '../components/Modal';
 import ToastContainer from '../components/ToastContainer';
-import { activityLogs } from '../data/dummyData';
-import { getActivityColor, getActivityIcon, paginate, totalPages } from '../utils/helpers';
+import { SkeletonTable } from '../components/SkeletonLoader';
+import { getActivityColor, getActivityIcon, formatDate } from '../utils/helpers';
 import { useToast } from '../hooks/useToast';
+import api from '../utils/api';
 
 const typeOptions = ['All', 'create', 'update', 'delete', 'dispatch', 'login', 'report'];
 const PER_PAGE = 8;
+
+const mapActionToType = (action) => {
+  const act = (action || '').toLowerCase();
+  if (act.includes('created') || act.includes('create')) return 'create';
+  if (act.includes('updated') || act.includes('update')) return 'update';
+  if (act.includes('deleted') || act.includes('delete')) return 'delete';
+  if (act.includes('dispatch')) return 'dispatch';
+  if (act.includes('login')) return 'login';
+  if (act.includes('report')) return 'report';
+  return 'update'; // fallback
+};
 
 function exportToCSV(data) {
   const headers = ['ID', 'User', 'Action', 'Details', 'Date', 'Time', 'Status Change', 'Type'];
@@ -28,29 +40,86 @@ function exportToCSV(data) {
 }
 
 export default function ActivityLogsPage() {
-  const { toasts, success, removeToast } = useToast();
+  const { toasts, success, error: toastError, removeToast } = useToast();
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('All');
   const [page, setPage] = useState(1);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedLog, setSelectedLog] = useState(null);
-
-  const filtered = activityLogs.filter((log) => {
-    const matchSearch =
-      !search ||
-      log.user.toLowerCase().includes(search.toLowerCase()) ||
-      log.action.toLowerCase().includes(search.toLowerCase()) ||
-      log.details.toLowerCase().includes(search.toLowerCase());
-    const matchType = typeFilter === 'All' || log.type === typeFilter;
-    const matchFrom = !dateFrom || log.date >= dateFrom;
-    const matchTo = !dateTo || log.date <= dateTo;
-    return matchSearch && matchType && matchFrom && matchTo;
+  
+  const [loading, setLoading] = useState(true);
+  const [logs, setLogs] = useState([]);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [typeCounts, setTypeCounts] = useState({
+    create: 0, update: 0, delete: 0, dispatch: 0, login: 0, report: 0
   });
 
-  const paged = paginate(filtered, page, PER_PAGE);
-  const pages = totalPages(filtered, PER_PAGE);
+  // Debounce search
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  const fetchLogs = async () => {
+    setLoading(true);
+    try {
+      const params = {
+        page,
+        limit: PER_PAGE,
+      };
+      if (debouncedSearch) params.search = debouncedSearch;
+      if (dateFrom) params.from = dateFrom;
+      if (dateTo) params.to = dateTo;
+
+      // Note: typeFilter is mapped client-side, but if typeFilter is selected we can fetch more on the client
+      // or we can request everything and filter. Let's send the request.
+      const res = await api.get('/activity-logs', { params });
+      
+      const dbLogs = res.data.data || [];
+      const mappedLogs = dbLogs.map((l) => {
+        const createdAt = new Date(l.created_at);
+        return {
+          id: l.id,
+          user: l.user_name || 'System',
+          action: l.action,
+          details: l.description,
+          date: createdAt.toLocaleDateString('en-CA'),
+          time: createdAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+          statusChange: 'N/A',
+          type: mapActionToType(l.action),
+        };
+      });
+
+      // Filter locally for the mapped 'type' tag if user chose a specific type
+      const filtered = typeFilter === 'All'
+        ? mappedLogs
+        : mappedLogs.filter((log) => log.type === typeFilter);
+
+      setLogs(filtered);
+      setTotalRecords(res.data.pagination?.total || 0);
+      setTotalPages(res.data.pagination?.totalPages || 1);
+
+      if (res.data.counts) {
+        setTypeCounts(res.data.counts);
+      }
+    } catch (err) {
+      console.error('Failed to fetch activity logs', err);
+      toastError('Failed to fetch activity logs from server');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLogs();
+  }, [debouncedSearch, typeFilter, dateFrom, dateTo, page]);
 
   const hasActiveFilters = typeFilter !== 'All' || dateFrom || dateTo;
 
@@ -61,9 +130,41 @@ export default function ActivityLogsPage() {
     setPage(1);
   };
 
-  const handleExport = () => {
-    exportToCSV(filtered);
-    success(`Exported ${filtered.length} log entries as CSV`);
+  const handleExport = async () => {
+    try {
+      const params = {
+        limit: 1000,
+      };
+      if (debouncedSearch) params.search = debouncedSearch;
+      if (dateFrom) params.from = dateFrom;
+      if (dateTo) params.to = dateTo;
+
+      const res = await api.get('/activity-logs', { params });
+      const dbLogs = res.data.data || [];
+      const mappedLogs = dbLogs.map((l) => {
+        const createdAt = new Date(l.created_at);
+        return {
+          id: l.id,
+          user: l.user_name || 'System',
+          action: l.action,
+          details: l.description,
+          date: createdAt.toLocaleDateString('en-CA'),
+          time: createdAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+          statusChange: 'N/A',
+          type: mapActionToType(l.action),
+        };
+      });
+
+      const filteredForExport = typeFilter === 'All'
+        ? mappedLogs
+        : mappedLogs.filter((l) => l.type === typeFilter);
+
+      exportToCSV(filteredForExport);
+      success(`Exported ${filteredForExport.length} log entries as CSV`);
+    } catch (err) {
+      console.error('Failed to export activity logs', err);
+      toastError('Failed to fetch logs for export');
+    }
   };
 
   return (
@@ -107,7 +208,7 @@ export default function ActivityLogsPage() {
         {typeOptions
           .filter((t) => t !== 'All')
           .map((type) => {
-            const count = activityLogs.filter((l) => l.type === type).length;
+            const count = typeCounts[type] || 0;
             return (
               <div
                 key={type}
@@ -142,7 +243,7 @@ export default function ActivityLogsPage() {
             <div className="flex flex-col sm:flex-row gap-3">
               <SearchBar
                 value={search}
-                onChange={(v) => { setSearch(v); setPage(1); }}
+                onChange={(v) => setSearch(v)}
                 placeholder="Search by user, action, or details..."
                 className="flex-1"
               />
@@ -187,7 +288,7 @@ export default function ActivityLogsPage() {
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
           <SearchBar
             value={search}
-            onChange={(v) => { setSearch(v); setPage(1); }}
+            onChange={(v) => setSearch(v)}
             placeholder="Search by user, action, or details..."
           />
         </div>
@@ -228,7 +329,7 @@ export default function ActivityLogsPage() {
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <h3 className="font-semibold text-slate-800">Log Entries</h3>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-slate-500">{filtered.length} entries</span>
+            <span className="text-sm text-slate-500">{totalRecords} entries</span>
             <button
               onClick={handleExport}
               className="flex items-center gap-1 text-xs text-green-600 hover:text-green-700 font-medium border border-green-200 hover:bg-green-50 px-2.5 py-1.5 rounded-lg transition-colors"
@@ -237,92 +338,97 @@ export default function ActivityLogsPage() {
             </button>
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-100">
-                {['#', 'User', 'Action', 'Details', 'Date', 'Time', 'Status Change', 'Type', ''].map((h, i) => (
-                  <th
-                    key={i}
-                    className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3.5"
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {paged.length === 0 ? (
-                <tr>
-                  <td colSpan="9" className="text-center py-16 text-slate-400">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center border border-slate-100">
-                        <span className="text-3xl">📋</span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-slate-700">No logs found</p>
-                        <p className="text-xs text-slate-400 mt-0.5">Try adjusting your search or filters</p>
-                      </div>
-                      {hasActiveFilters && (
-                        <button
-                          onClick={clearFilters}
-                          className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-                        >
-                          Clear all filters
-                        </button>
-                      )}
-                    </div>
-                  </td>
+        
+        {loading ? (
+          <SkeletonTable cols={8} rows={8} />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-100">
+                  {['#', 'User', 'Action', 'Details', 'Date', 'Time', 'Status Change', 'Type', ''].map((h, i) => (
+                    <th
+                      key={i}
+                      className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3.5"
+                    >
+                      {h}
+                    </th>
+                  ))}
                 </tr>
-              ) : (
-                paged.map((log) => (
-                  <tr
-                    key={log.id}
-                    className="hover:bg-slate-50 transition-colors cursor-pointer"
-                    onClick={() => setSelectedLog(log)}
-                  >
-                    <td className="px-5 py-4 text-sm text-slate-400 font-mono">{log.id}</td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                          {log.user.charAt(0)}
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {logs.length === 0 ? (
+                  <tr>
+                    <td colSpan="9" className="text-center py-16 text-slate-400">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center border border-slate-100">
+                          <span className="text-3xl">📋</span>
                         </div>
-                        <span className="text-sm font-medium text-slate-700 whitespace-nowrap">{log.user}</span>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-700">No logs found</p>
+                          <p className="text-xs text-slate-400 mt-0.5">Try adjusting your search or filters</p>
+                        </div>
+                        {hasActiveFilters && (
+                          <button
+                            onClick={clearFilters}
+                            className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                          >
+                            Clear all filters
+                          </button>
+                        )}
                       </div>
-                    </td>
-                    <td className="px-5 py-4 text-sm text-slate-700 font-medium whitespace-nowrap">{log.action}</td>
-                    <td className="px-5 py-4 text-sm text-slate-500 max-w-[180px] truncate">{log.details}</td>
-                    <td className="px-5 py-4 text-sm text-slate-500 whitespace-nowrap">{log.date}</td>
-                    <td className="px-5 py-4 text-sm text-slate-400 font-mono">{log.time}</td>
-                    <td className="px-5 py-4">
-                      {log.statusChange !== 'N/A' ? (
-                        <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full font-medium border border-blue-100 whitespace-nowrap">
-                          {log.statusChange}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-slate-400">—</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-4">
-                      <span
-                        className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full capitalize ${getActivityColor(log.type)}`}
-                      >
-                        <span>{getActivityIcon(log.type)}</span>
-                        {log.type}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className="text-xs text-blue-600 hover:text-blue-700 font-medium">View →</span>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : (
+                  logs.map((log) => (
+                    <tr
+                      key={log.id}
+                      className="hover:bg-slate-50 transition-colors cursor-pointer"
+                      onClick={() => setSelectedLog(log)}
+                    >
+                      <td className="px-5 py-4 text-sm text-slate-400 font-mono">{log.id}</td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                            {log.user.charAt(0)}
+                          </div>
+                          <span className="text-sm font-medium text-slate-700 whitespace-nowrap">{log.user}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 text-sm text-slate-700 font-medium whitespace-nowrap">{log.action}</td>
+                      <td className="px-5 py-4 text-sm text-slate-500 max-w-[180px] truncate">{log.details}</td>
+                      <td className="px-5 py-4 text-sm text-slate-500 whitespace-nowrap">{formatDate(log.date)}</td>
+                      <td className="px-5 py-4 text-sm text-slate-400 font-mono">{log.time}</td>
+                      <td className="px-5 py-4">
+                        {log.statusChange !== 'N/A' ? (
+                          <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full font-medium border border-blue-100 whitespace-nowrap">
+                            {log.statusChange}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-4">
+                        <span
+                          className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full capitalize ${getActivityColor(log.type)}`}
+                        >
+                          <span>{getActivityIcon(log.type)}</span>
+                          {log.type}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span className="text-xs text-blue-600 hover:text-blue-700 font-medium">View →</span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         <div className="px-6 py-4 border-t border-slate-100">
-          <Pagination currentPage={page} totalPages={pages} onPageChange={setPage} />
+          <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
         </div>
       </div>
 
@@ -350,7 +456,7 @@ export default function ActivityLogsPage() {
                 </span>
               </div>
               <div className="text-right">
-                <p className="text-xs text-slate-500">{selectedLog.date}</p>
+                <p className="text-xs text-slate-500">{formatDate(selectedLog.date)}</p>
                 <p className="text-xs font-mono text-slate-400">{selectedLog.time}</p>
               </div>
             </div>

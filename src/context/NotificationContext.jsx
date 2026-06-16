@@ -1,82 +1,62 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import api from '../utils/api';
+import { useAuth } from './AuthContext';
+import { formatTimeAgo } from '../utils/helpers';
 
 const NotificationContext = createContext(null);
 
-const defaultNotifications = [
-  {
-    id: 'notif-1',
-    title: 'Cargo Ready for Dispatch',
-    text: '2 cargo items are now ready for dispatch in Zone A.',
-    time: '5m ago',
-    type: 'warning',
-    read: false,
-    date: '2026-06-12 09:50:00',
-  },
-  {
-    id: 'notif-2',
-    title: 'Cargo Delivered',
-    text: 'Cargo CW-2024-005 has been successfully delivered to Hong Kong.',
-    time: '1h ago',
-    type: 'success',
-    read: false,
-    date: '2026-06-12 08:45:00',
-  },
-  {
-    id: 'notif-3',
-    title: 'Warehouse Capacity Alert',
-    text: 'Warehouse Zone C utilization has reached 82% capacity.',
-    time: '2h ago',
-    type: 'critical',
-    read: false,
-    date: '2026-06-12 07:30:00',
-  },
-  {
-    id: 'notif-4',
-    title: 'New Cargo Received',
-    text: 'New cargo shipment CW-2024-012 from New York has been checked in.',
-    time: '3h ago',
-    type: 'info',
-    read: false,
-    date: '2026-06-12 06:15:00',
-  },
-  {
-    id: 'notif-5',
-    title: 'Dispatch Delayed',
-    text: 'Dispatch DIS-003 is experiencing custom clearance delays.',
-    time: '5h ago',
-    type: 'critical',
-    read: true,
-    date: '2026-06-12 04:00:00',
-  },
-  {
-    id: 'notif-6',
-    title: 'New Report Generated',
-    text: 'Monthly logistics operations report for June 2026 is ready.',
-    time: '1d ago',
-    type: 'info',
-    read: true,
-    date: '2026-06-11 15:30:00',
-  },
-];
-
 export const NotificationProvider = ({ children }) => {
-  const [notifications, setNotifications] = useState(() => {
-    const stored = localStorage.getItem('cwis_notifications');
-    return stored ? JSON.parse(stored) : defaultNotifications;
-  });
+  const { user } = useAuth();
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchNotifications = useCallback(async () => {
+    if (!user) return;
+    try {
+      const res = await api.get('/notifications');
+      const items = (res.data.data?.notifications || res.data.data || []).map((n) => ({
+        id: n.id,
+        title: n.title,
+        text: n.message,
+        time: formatTimeAgo(n.created_at),
+        type: n.type,
+        read: n.is_read === 1 || n.is_read === true || n.is_read === '1',
+        date: n.created_at,
+      }));
+      setNotifications(items);
+    } catch (err) {
+      console.error('Failed to fetch notifications', err);
+      setNotifications([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
 
   useEffect(() => {
-    localStorage.setItem('cwis_notifications', JSON.stringify(notifications));
-  }, [notifications]);
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
 
-  const markAsRead = (id) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
+  const markAsRead = async (id) => {
+    try {
+      await api.put(`/notifications/${id}/read`);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+      );
+    } catch (err) {
+      console.error('Failed to mark notification as read', err);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  const markAllAsRead = async () => {
+    try {
+      const unread = notifications.filter((n) => !n.read);
+      await Promise.all(unread.map((n) => api.put(`/notifications/${n.id}/read`)));
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    } catch (err) {
+      console.error('Failed to mark all as read', err);
+    }
   };
 
   const deleteNotification = (id) => {
@@ -105,6 +85,7 @@ export const NotificationProvider = ({ children }) => {
         markAllAsRead,
         deleteNotification,
         addNotification,
+        refetch: fetchNotifications,
       }}
     >
       {children}

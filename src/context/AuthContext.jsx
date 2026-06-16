@@ -1,9 +1,8 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { canAccess, hasRole, DEMO_USERS } from '../config/permissions';
+import { canAccess, hasRole } from '../config/permissions';
+import api from '../utils/api';
 
 const AuthContext = createContext(null);
-
-const API_BASE = '/api';
 
 // Storage key
 const STORAGE_KEY = 'cwis_user';
@@ -14,38 +13,9 @@ const TOKEN_KEY = 'cwis_token';
  * Returns { user, token } on success or throws.
  */
 const apiLogin = async (email, password) => {
-  const res = await fetch(`${API_BASE}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || 'Invalid credentials');
-  }
-  const data = await res.json();
+  const res = await api.post('/auth/login', { email, password });
   // Backend returns { success, data: { user, token } }
-  return data.data || data;
-};
-
-/**
- * Dummy login fallback — matches against DEMO_USERS array.
- * Works offline or when backend is down.
- */
-const dummyLogin = (email, password) => {
-  const found = DEMO_USERS.find((u) => u.email === email);
-  if (found && password.length >= 6) {
-    return {
-      user: {
-        id: DEMO_USERS.indexOf(found) + 1,
-        name: found.name,
-        email: found.email,
-        role: found.role,
-      },
-      token: 'dummy-token',
-    };
-  }
-  return null;
+  return res.data.data || res.data;
 };
 
 export const AuthProvider = ({ children }) => {
@@ -81,28 +51,21 @@ export const AuthProvider = ({ children }) => {
   };
 
   /**
-   * Login: tries real backend first, falls back to dummy auth.
+   * Login: tries real backend.
    */
   const login = async (email, password, remember = false) => {
     if (!email || !password) {
       return { success: false, message: 'Please fill in all fields.' };
     }
 
-    // 1. Try real backend
     try {
       const { user: apiUser, token: apiToken } = await apiLogin(email, password);
       saveSession(apiUser, apiToken, remember);
       return { success: true };
     } catch (apiErr) {
-      // 2. Fall back to dummy auth (useful when backend is unreachable)
-      const dummy = dummyLogin(email, password);
-      if (dummy) {
-        saveSession(dummy.user, dummy.token, remember);
-        return { success: true };
-      }
       return {
         success: false,
-        message: apiErr.message || 'Invalid email or password.',
+        message: apiErr.response?.data?.message || apiErr.message || 'Invalid email or password.',
       };
     }
   };

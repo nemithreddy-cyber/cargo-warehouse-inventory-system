@@ -14,7 +14,7 @@ router.get('/occupancy', warehouseController.getWarehouseOccupancy);
 
 router.post(
   '/zones',
-  requireRole('Admin'),
+  requireRole('Super Admin'),
   [
     body('zone_name').trim().notEmpty().withMessage('Zone name is required'),
     body('capacity').isInt({ min: 1 }).withMessage('Capacity must be a positive integer'),
@@ -25,7 +25,7 @@ router.post(
 
 router.post(
   '/locations',
-  requireRole('Admin'),
+  requireRole('Super Admin'),
   [
     body('zone_id').isInt().withMessage('Zone ID must be an integer'),
     body('location_code').trim().notEmpty().withMessage('Location code is required'),

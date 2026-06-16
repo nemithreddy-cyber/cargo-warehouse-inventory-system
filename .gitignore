@@ -28,6 +28,7 @@ backend/.env
 backend/*.db
 backend/*.sqlite
 backend/*.sqlite3
+backend/database/
 
 # ── Editor directories ────────────────────────────────────────
 .vscode/*
