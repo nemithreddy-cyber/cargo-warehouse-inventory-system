@@ -126,11 +126,7 @@ CREATE INDEX IF NOT EXISTS idx_tasks_status   ON tasks (status);
 
 const SEED_SQL = `
 INSERT OR IGNORE INTO users (id, name, email, password, role) VALUES
-  (1, 'Super Admin',            'admin@cargowarehouse.com',   '$2a$12$NrymNyzzI2yMDZBQEvfzW.v4nJvDWM9gVq6MbEzVxG8kPv7jqfEgW', 'Super Admin'),
-  (2, 'Ahmed Al-Rashidi',       'warehouse@cargowarehouse.com','$2a$12$NrymNyzzI2yMDZBQEvfzW.v4nJvDWM9gVq6MbEzVxG8kPv7jqfEgW', 'Warehouse Staff'),
-  (3, 'Fatima Al-Zahra',        'ops@cargowarehouse.com',      '$2a$12$NrymNyzzI2yMDZBQEvfzW.v4nJvDWM9gVq6MbEzVxG8kPv7jqfEgW', 'Operations Staff'),
-  (4, 'Hassan Mohammed',        'docs@cargowarehouse.com',     '$2a$12$NrymNyzzI2yMDZBQEvfzW.v4nJvDWM9gVq6MbEzVxG8kPv7jqfEgW', 'Documentation Executive'),
-  (5, 'Mariam Khalid',          'accounts@cargowarehouse.com', '$2a$12$NrymNyzzI2yMDZBQEvfzW.v4nJvDWM9gVq6MbEzVxG8kPv7jqfEgW', 'Accounts Staff');
+  (1, 'Super Admin',            'admin@cargowarehouse.com',   '$2a$12$NrymNyzzI2yMDZBQEvfzW.v4nJvDWM9gVq6MbEzVxG8kPv7jqfEgW', 'Super Admin');
 
 INSERT OR IGNORE INTO warehouse_zones (id, zone_name, capacity, occupied) VALUES
   (1, 'Zone A - General Cargo',   100, 42),
