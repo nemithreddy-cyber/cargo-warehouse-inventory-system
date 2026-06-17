@@ -51,6 +51,15 @@ export default function TasksPage() {
   const isAdmin = user?.role === ROLES.SUPER_ADMIN;
 
   const [activeUsers, setActiveUsers] = useState([]);
+  const [activeTab, setActiveTab] = useState('All');
+  const [search, setSearch] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({
+    title: '', description: '', assigned_to: '', priority: 'Medium', due_date: '', cargo_id: '',
+  });
 
   useEffect(() => {
     const fetchActiveUsers = async () => {
@@ -66,16 +75,6 @@ export default function TasksPage() {
       fetchActiveUsers();
     }
   }, [isAdmin, showModal]);
-
-  const [activeTab, setActiveTab] = useState('All');
-  const [search, setSearch] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [editingTask, setEditingTask] = useState(null);
-  const [deletingId, setDeletingId] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({
-    title: '', description: '', assigned_to: '', priority: 'Medium', due_date: '', cargo_id: '',
-  });
 
   const displayTasks = isAdmin ? tasks : myTasks;
   const totalCount = displayTasks.length;
