@@ -49,15 +49,18 @@ const getUser = async (req, res, next) => {
 const createUser = async (req, res, next) => {
   try {
     requireAdmin(req);
-    const { name, email, password, role } = req.body;
-    if (!name || !email || !password) {
-      throw createError('Name, email, and password are required.', 400);
+    const { name, username, email, password, role } = req.body;
+    if (!name || !username || !email || !password) {
+      throw createError('Name, username, email, and password are required.', 400);
     }
-    const existing = await User.findByEmail(email);
-    if (existing) throw createError('Email already in use.', 409);
+    const existingEmail = await User.findByEmail(email);
+    if (existingEmail) throw createError('Email already in use.', 409);
+
+    const existingUsername = await User.findByUsername(username);
+    if (existingUsername) throw createError('Username already in use.', 409);
 
     const hashed = await bcrypt.hash(password, 12);
-    const id = await User.create({ name, email, password: hashed, role });
+    const id = await User.create({ name, username, email, password: hashed, role });
 
     await ActivityLog.create({
       user_id: req.user.id,
@@ -79,8 +82,19 @@ const updateUser = async (req, res, next) => {
     const existing = await User.findById(req.params.id);
     if (!existing) throw createError('User not found.', 404);
 
-    const { name, email, role, is_active } = req.body;
-    await User.update(req.params.id, { name, email, role, is_active });
+    const { name, username, email, role, is_active } = req.body;
+
+    if (username && username !== existing.username) {
+      const existingUsername = await User.findByUsername(username);
+      if (existingUsername) throw createError('Username already in use.', 409);
+    }
+
+    if (email && email !== existing.email) {
+      const existingEmail = await User.findByEmail(email);
+      if (existingEmail) throw createError('Email already in use.', 409);
+    }
+
+    await User.update(req.params.id, { name, username, email, role, is_active });
 
     await ActivityLog.create({
       user_id: req.user.id,

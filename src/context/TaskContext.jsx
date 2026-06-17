@@ -28,6 +28,8 @@ export const TaskProvider = ({ children }) => {
 
   useEffect(() => {
     fetchTasks();
+    const interval = setInterval(fetchTasks, 30000);
+    return () => clearInterval(interval);
   }, [fetchTasks]);
 
   // Tasks assigned to current user (admin sees all tasks)

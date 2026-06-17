@@ -10,6 +10,7 @@ import { ROLES } from './config/permissions';
 
 // Pages
 import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import CargoListPage from './pages/CargoListPage';
 import AddCargoPage from './pages/AddCargoPage';
@@ -35,6 +36,7 @@ export default function App() {
                 {/* Public routes — redirect to dashboard if already logged in */}
                 <Route element={<PublicRoute />}>
                   <Route path="/login" element={<LoginPage />} />
+                  <Route path="/register" element={<RegisterPage />} />
                 </Route>
 
                 {/* Protected routes */}

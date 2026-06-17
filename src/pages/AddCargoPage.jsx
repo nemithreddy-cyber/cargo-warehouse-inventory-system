@@ -30,6 +30,15 @@ const inputClass = (hasError) =>
       : 'border-slate-200 focus:border-blue-500 bg-white'
   }`;
 
+const Section = ({ title, children }) => (
+  <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+    <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
+      <h3 className="font-semibold text-slate-800">{title}</h3>
+    </div>
+    <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">{children}</div>
+  </div>
+);
+
 export default function AddCargoPage() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -147,7 +156,14 @@ export default function AddCargoPage() {
       if (!form[k]) errs[k] = msg;
     });
     if (form.packageCount && isNaN(Number(form.packageCount))) errs.packageCount = 'Must be a number';
-    if (form.weight && isNaN(Number(form.weight))) errs.weight = 'Must be a number';
+    if (form.weight) {
+      const wVal = Number(form.weight);
+      if (isNaN(wVal)) {
+        errs.weight = 'Must be a number';
+      } else if (wVal < 1 || wVal > 20000) {
+        errs.weight = 'Weight must be between 1 and 20,000 kg';
+      }
+    }
     return errs;
   };
 
@@ -228,14 +244,6 @@ export default function AddCargoPage() {
     );
   }
 
-  const Section = ({ title, children }) => (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-        <h3 className="font-semibold text-slate-800">{title}</h3>
-      </div>
-      <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">{children}</div>
-    </div>
-  );
 
   return (
     <div className="space-y-6 max-w-6xl">

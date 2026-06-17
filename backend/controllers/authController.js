@@ -1,10 +1,12 @@
 const authService = require('../services/authService');
 const { success } = require('../utils/helpers');
 
+const User = require('../models/User');
+
 const register = async (req, res, next) => {
   try {
-    const { name, email, password, role } = req.body;
-    const result = await authService.register({ name, email, password, role });
+    const { name, username, email, password, role } = req.body;
+    const result = await authService.register({ name, username, email, password, role });
     success(res, result, 'Registration successful', 201);
   } catch (err) {
     next(err);
@@ -30,4 +32,13 @@ const getProfile = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, getProfile };
+const checkUsers = async (req, res, next) => {
+  try {
+    const count = await User.count();
+    res.status(200).json({ success: true, hasUsers: count > 0 });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { register, login, getProfile, checkUsers };

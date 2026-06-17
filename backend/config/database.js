@@ -137,25 +137,34 @@ function initSqlite3() {
 let dbReadyPromise = null;
 
 async function initializeDb() {
-  // MySQL (explicit config, non-Vercel)
-  if (process.env.DB_CLIENT === 'mysql' && !process.env.VERCEL) {
+  // MySQL/TiDB (explicit config)
+  if (process.env.DB_CLIENT === 'mysql') {
     try {
       const mysql = require('mysql2/promise');
-      mysqlPool = mysql.createPool({
+      const poolConfig = {
         host: process.env.DB_HOST || 'localhost',
-        port: process.env.DB_PORT || 3306,
+        port: parseInt(process.env.DB_PORT || '3306', 10),
         user: process.env.DB_USER || 'root',
         password: process.env.DB_PASSWORD || '',
         database: process.env.DB_NAME || 'cargo_warehouse',
-        waitForConnections: true, connectionLimit: 10, queueLimit: 0, timezone: '+00:00',
-      });
+        waitForConnections: true,
+        connectionLimit: 10,
+        queueLimit: 0,
+        timezone: '+00:00',
+      };
+
+      if (process.env.DB_HOST && (process.env.DB_HOST.includes('tidbcloud.com') || process.env.DB_SSL === 'true')) {
+        poolConfig.ssl = { rejectUnauthorized: true };
+      }
+
+      mysqlPool = mysql.createPool(poolConfig);
       const c = await mysqlPool.getConnection();
-      console.log('✅ MySQL connected');
+      console.log('✅ MySQL/TiDB connected');
       c.release();
       dbClient = 'mysql';
       return;
     } catch (err) {
-      console.warn('⚠️ MySQL failed, falling back to libsql:', err.message);
+      console.warn('⚠️ MySQL/TiDB failed, falling back to libsql:', err.message);
     }
   }
 

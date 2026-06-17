@@ -8,12 +8,12 @@ USE cargo_warehouse;
 -- ============================================================
 -- Users (passwords are all "Password@123" hashed with bcrypt)
 -- ============================================================
-INSERT IGNORE INTO users (name, email, password, role) VALUES
-  ('Super Admin',            'admin@cargowarehouse.com',   '$2a$12$NrymNyzzI2yMDZBQEvfzW.v4nJvDWM9gVq6MbEzVxG8kPv7jqfEgW', 'Super Admin'),
-  ('Ahmed Al-Rashidi',       'warehouse@cargowarehouse.com','$2a$12$NrymNyzzI2yMDZBQEvfzW.v4nJvDWM9gVq6MbEzVxG8kPv7jqfEgW', 'Warehouse Staff'),
-  ('Fatima Al-Zahra',        'ops@cargowarehouse.com',      '$2a$12$NrymNyzzI2yMDZBQEvfzW.v4nJvDWM9gVq6MbEzVxG8kPv7jqfEgW', 'Operations Staff'),
-  ('Hassan Mohammed',        'docs@cargowarehouse.com',     '$2a$12$NrymNyzzI2yMDZBQEvfzW.v4nJvDWM9gVq6MbEzVxG8kPv7jqfEgW', 'Documentation Executive'),
-  ('Mariam Khalid',          'accounts@cargowarehouse.com', '$2a$12$NrymNyzzI2yMDZBQEvfzW.v4nJvDWM9gVq6MbEzVxG8kPv7jqfEgW', 'Accounts Staff');
+INSERT IGNORE INTO users (name, username, email, password, role) VALUES
+  ('Super Admin',            'admin',     'admin@cargowarehouse.com',   '$2a$12$NrymNyzzI2yMDZBQEvfzW.v4nJvDWM9gVq6MbEzVxG8kPv7jqfEgW', 'Super Admin'),
+  ('Ahmed Al-Rashidi',       'warehouse', 'warehouse@cargowarehouse.com','$2a$12$NrymNyzzI2yMDZBQEvfzW.v4nJvDWM9gVq6MbEzVxG8kPv7jqfEgW', 'Warehouse Staff'),
+  ('Fatima Al-Zahra',        'ops',       'ops@cargowarehouse.com',      '$2a$12$NrymNyzzI2yMDZBQEvfzW.v4nJvDWM9gVq6MbEzVxG8kPv7jqfEgW', 'Operations Staff'),
+  ('Hassan Mohammed',        'docs',      'docs@cargowarehouse.com',     '$2a$12$NrymNyzzI2yMDZBQEvfzW.v4nJvDWM9gVq6MbEzVxG8kPv7jqfEgW', 'Documentation Executive'),
+  ('Mariam Khalid',          'accounts',  'accounts@cargowarehouse.com', '$2a$12$NrymNyzzI2yMDZBQEvfzW.v4nJvDWM9gVq6MbEzVxG8kPv7jqfEgW', 'Accounts Staff');
 
 -- ============================================================
 -- Warehouse Zones

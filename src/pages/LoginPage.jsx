@@ -3,11 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { MdEmail, MdLock, MdVisibility, MdVisibilityOff } from 'react-icons/md';
 import { FaPlaneArrival } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
-import { DEMO_USERS, roleBadgeColors } from '../config/permissions';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState(DEMO_USERS[0].email);
-  const [password, setPassword] = useState('Password@123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -24,12 +23,6 @@ export default function LoginPage() {
     setLoading(false);
     if (result.success) navigate('/dashboard');
     else setError(result.message);
-  };
-
-  const fillDemo = (demoUser) => {
-    setEmail(demoUser.email);
-    setPassword('Password@123');
-    setError('');
   };
 
   return (
@@ -122,45 +115,6 @@ export default function LoginPage() {
                 ) : 'Sign In'}
               </button>
             </form>
-
-            {/* Role Quick Login */}
-            <div className="mt-6 p-4 bg-white/5 rounded-xl border border-white/10">
-              <p className="text-blue-300 text-xs font-semibold text-center mb-3">
-                🔑 Quick Login — Select a Role
-              </p>
-              <div className="space-y-1.5">
-                {DEMO_USERS.map((demo) => {
-                  const c = roleBadgeColors[demo.role] || {};
-                  const isSelected = email === demo.email;
-                  return (
-                    <button
-                      key={demo.email}
-                      type="button"
-                      onClick={() => fillDemo(demo)}
-                      className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-left transition-all text-xs ${
-                        isSelected
-                          ? 'bg-white/20 border border-white/30'
-                          : 'bg-white/5 border border-white/10 hover:bg-white/10'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] flex-shrink-0 ${c.bg || 'bg-slate-200'} ${c.text || 'text-slate-700'}`}>
-                          {demo.name.charAt(0)}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-white font-semibold truncate">{demo.name}</p>
-                          <p className="text-blue-300 text-[10px] truncate">{demo.email}</p>
-                        </div>
-                      </div>
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${c.bg || 'bg-slate-100'} ${c.text || 'text-slate-600'}`}>
-                        {demo.role.split(' ')[0]}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="text-blue-400/60 text-[10px] text-center mt-2">Password for all: <span className="text-blue-300 font-mono">Password@123</span></p>
-            </div>
           </div>
         </div>
 

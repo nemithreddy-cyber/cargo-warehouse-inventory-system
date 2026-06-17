@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   MdPeople, MdAdd, MdEdit, MdDelete, MdClose, MdCheck,
   MdSearch, MdPerson, MdEmail, MdLock, MdVisibility, MdVisibilityOff,
-  MdToggleOn, MdToggleOff, MdShield,
+  MdToggleOn, MdToggleOff, MdShield, MdAccountCircle
 } from 'react-icons/md';
 import { useAuth } from '../context/AuthContext';
 import { ROLES, roleBadgeColors, DEMO_USERS } from '../config/permissions';
@@ -50,7 +50,7 @@ export default function UserManagementPage() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [showPass, setShowPass] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', password: '', role: ROLES.WAREHOUSE_STAFF });
+  const [form, setForm] = useState({ name: '', username: '', email: '', password: '', role: ROLES.WAREHOUSE_STAFF });
 
   const headers = {
     'Content-Type': 'application/json',
@@ -63,7 +63,7 @@ export default function UserManagementPage() {
       const res = await fetch(`${API_BASE}/users`, { headers });
       if (!res.ok) throw new Error();
       const data = await res.json();
-      setUsers(data.data?.users || data.data || []);
+      setUsers(data.users || data.data?.users || data.data || []);
       setUseOffline(false);
     } catch {
       setUsers(OFFLINE_USERS);
@@ -73,7 +73,11 @@ export default function UserManagementPage() {
     }
   };
 
-  useEffect(() => { fetchUsers(); }, []);
+  useEffect(() => {
+    fetchUsers();
+    const interval = setInterval(fetchUsers, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const filtered = users.filter((u) => {
     const matchRole = roleFilter === 'All' || u.role === roleFilter;
@@ -85,13 +89,13 @@ export default function UserManagementPage() {
 
   const openCreate = () => {
     setEditingUser(null);
-    setForm({ name: '', email: '', password: '', role: ROLES.WAREHOUSE_STAFF });
+    setForm({ name: '', username: '', email: '', password: '', role: ROLES.WAREHOUSE_STAFF });
     setShowModal(true);
   };
 
   const openEdit = (u) => {
     setEditingUser(u);
-    setForm({ name: u.name, email: u.email, password: '', role: u.role });
+    setForm({ name: u.name, username: u.username || '', email: u.email, password: '', role: u.role });
     setShowModal(true);
   };
 
@@ -110,20 +114,20 @@ export default function UserManagementPage() {
         return;
       }
       if (editingUser) {
-        const body = { name: form.name, email: form.email, role: form.role };
+        const body = { name: form.name, username: form.username, email: form.email, role: form.role };
         const res = await fetch(`${API_BASE}/users/${editingUser.id}`, {
           method: 'PATCH', headers, body: JSON.stringify(body),
         });
         if (!res.ok) throw new Error();
         const data = await res.json();
-        setUsers((prev) => prev.map((u) => u.id === editingUser.id ? (data.data?.user || u) : u));
+        setUsers((prev) => prev.map((u) => u.id === editingUser.id ? (data.user || data.data?.user || u) : u));
       } else {
         const res = await fetch(`${API_BASE}/users`, {
           method: 'POST', headers, body: JSON.stringify(form),
         });
         if (!res.ok) throw new Error();
         const data = await res.json();
-        setUsers((prev) => [data.data?.user || {}, ...prev]);
+        setUsers((prev) => [data.user || data.data?.user || {}, ...prev]);
       }
       setShowModal(false);
     } catch (err) {
@@ -320,6 +324,15 @@ export default function UserManagementPage() {
                   <MdPerson className="text-slate-400 flex-shrink-0" />
                   <input type="text" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
                     placeholder="e.g. John Smith"
+                    className="bg-transparent text-sm text-slate-700 outline-none w-full" />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Username *</label>
+                <div className="flex items-center gap-2 border border-slate-200 rounded-xl px-3 py-2.5 focus-within:ring-2 focus-within:ring-blue-200 focus-within:border-blue-300 transition">
+                  <MdAccountCircle className="text-slate-400 flex-shrink-0" />
+                  <input type="text" required value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })}
+                    placeholder="e.g. johnsmith"
                     className="bg-transparent text-sm text-slate-700 outline-none w-full" />
                 </div>
               </div>

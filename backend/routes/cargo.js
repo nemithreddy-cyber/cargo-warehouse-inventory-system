@@ -31,7 +31,7 @@ router.post(
       .optional()
       .isInt({ min: 1 })
       .withMessage('Package count must be a positive integer'),
-    body('weight').isFloat({ min: 0.01 }).withMessage('Weight must be a positive number'),
+    body('weight').isFloat({ min: 1, max: 20000 }).withMessage('Weight must be between 1 and 20,000 kg'),
     body('length').isFloat({ min: 0.1 }).withMessage('Length must be a positive number'),
     body('width').isFloat({ min: 0.1 }).withMessage('Width must be a positive number'),
     body('height').isFloat({ min: 0.1 }).withMessage('Height must be a positive number'),
@@ -75,7 +75,7 @@ router.put(
       .optional()
       .isInt({ min: 1 })
       .withMessage('Package count must be a positive integer'),
-    body('weight').optional().isFloat({ min: 0.01 }).withMessage('Weight must be a positive number'),
+    body('weight').optional().isFloat({ min: 1, max: 20000 }).withMessage('Weight must be between 1 and 20,000 kg'),
     body('length').optional().isFloat({ min: 0.1 }).withMessage('Length must be a positive number'),
     body('width').optional().isFloat({ min: 0.1 }).withMessage('Width must be a positive number'),
     body('height').optional().isFloat({ min: 0.1 }).withMessage('Height must be a positive number'),

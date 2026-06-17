@@ -150,6 +150,14 @@ const updateCargo = async (id, data, userId) => {
     await Warehouse.updateLocationStatus(data.location_id, 'Occupied');
   }
 
+  if (data.status && data.status !== existing.status) {
+    await ActivityLog.create({
+      user_id: userId,
+      action: 'CARGO_STATUS_CHANGED',
+      description: `Cargo ${existing.cargo_id} status changed from ${existing.status} to ${data.status}`,
+    });
+  }
+
   await Cargo.update(existing.id, data);
 
   // Status-based notifications

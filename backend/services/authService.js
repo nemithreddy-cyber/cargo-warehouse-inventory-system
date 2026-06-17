@@ -9,12 +9,15 @@ const SALT_ROUNDS = 12;
 /**
  * Register a new user.
  */
-const register = async ({ name, email, password, role }) => {
-  const existing = await User.findByEmail(email);
-  if (existing) throw createError('An account with this email already exists.', 409);
+const register = async ({ name, username, email, password, role }) => {
+  const existingEmail = await User.findByEmail(email);
+  if (existingEmail) throw createError('An account with this email already exists.', 409);
+
+  const existingUsername = await User.findByUsername(username);
+  if (existingUsername) throw createError('An account with this username already exists.', 409);
 
   const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
-  const userId = await User.create({ name, email, password: hashedPassword, role });
+  const userId = await User.create({ name, username, email, password: hashedPassword, role });
 
   await ActivityLog.create({
     user_id: userId,

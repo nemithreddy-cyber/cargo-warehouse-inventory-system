@@ -10,6 +10,7 @@ router.post(
   '/register',
   [
     body('name').trim().notEmpty().withMessage('Name is required'),
+    body('username').trim().notEmpty().withMessage('Username is required'),
     body('email').isEmail().withMessage('Must be a valid email address'),
     body('password')
       .isLength({ min: 6 })
@@ -34,5 +35,6 @@ router.post(
 );
 
 router.get('/profile', authenticate, authController.getProfile);
+router.get('/check-users', authController.checkUsers);
 
 module.exports = router;

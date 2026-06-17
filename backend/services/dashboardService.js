@@ -105,7 +105,7 @@ const getDashboard = async () => {
   }));
 
   // Calculate total weight of stored/received cargo
-  const [weightResult] = await Cargo.count("WHERE status IN ('Received', 'Stored', 'Ready For Dispatch')", []);
+  const weightResult = await Cargo.count("WHERE status IN ('Received', 'Stored', 'Ready For Dispatch')", []);
   // We can just calculate total cargo weight
   const [totalWeightRow] = await db.query("SELECT SUM(weight) AS total_weight FROM cargo WHERE status != 'Delivered'");
   const totalWeight = parseFloat(totalWeightRow[0]?.total_weight || 0);

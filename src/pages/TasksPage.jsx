@@ -9,6 +9,7 @@ import { useTasks } from '../context/TaskContext';
 import { useAuth } from '../context/AuthContext';
 import { ROLES } from '../config/permissions';
 import { SkeletonPulse } from '../components/SkeletonLoader';
+import api from '../utils/api';
 
 const STATUSES = ['All', 'Pending', 'In Progress', 'Completed'];
 const PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'];
@@ -48,6 +49,23 @@ export default function TasksPage() {
   const { tasks, myTasks, loading, createTask, updateTask, deleteTask, pendingCount, inProgressCount, completedCount } = useTasks();
   const { user } = useAuth();
   const isAdmin = user?.role === ROLES.SUPER_ADMIN;
+
+  const [activeUsers, setActiveUsers] = useState([]);
+
+  useEffect(() => {
+    const fetchActiveUsers = async () => {
+      try {
+        const res = await api.get('/users/active');
+        const usersList = res.data?.users || res.data?.data?.users || res.data?.data || [];
+        setActiveUsers(Array.isArray(usersList) ? usersList : []);
+      } catch (err) {
+        console.error('Failed to fetch active users', err);
+      }
+    };
+    if (isAdmin) {
+      fetchActiveUsers();
+    }
+  }, [isAdmin, showModal]);
 
   const [activeTab, setActiveTab] = useState('All');
   const [search, setSearch] = useState('');
@@ -407,7 +425,7 @@ export default function TasksPage() {
                     className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-blue-200 bg-white"
                   >
                     <option value="">Select user...</option>
-                    {ASSIGNABLE_USERS.map((u) => (
+                    {activeUsers.map((u) => (
                       <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
                     ))}
                   </select>

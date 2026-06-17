@@ -22,6 +22,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [hasUsers, setHasUsers] = useState(true);
 
   // Restore session from storage
   useEffect(() => {
@@ -39,7 +40,18 @@ export const AuthProvider = ({ children }) => {
         sessionStorage.removeItem(STORAGE_KEY);
       }
     }
-    setLoading(false);
+
+    // Check if any users exist
+    api.get('/auth/check-users')
+      .then(res => {
+        setHasUsers(res.data?.hasUsers ?? true);
+      })
+      .catch(() => {
+        setHasUsers(true);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
   const saveSession = (userData, tokenValue, remember) => {
@@ -70,6 +82,35 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  /**
+   * Register: tries real backend.
+   */
+  const register = async ({ name, username, email, password, role = 'Super Admin' }) => {
+    try {
+      const res = await api.post('/auth/register', { name, username, email, password, role });
+      const { user: apiUser, token: apiToken } = res.data.data || res.data;
+      saveSession(apiUser, apiToken, true);
+      return { success: true };
+    } catch (err) {
+      return {
+        success: false,
+        message: err.response?.data?.message || err.message || 'Registration failed.',
+      };
+    }
+  };
+
+  /**
+   * Check if any users exist in the database.
+   */
+  const checkHasUsers = async () => {
+    try {
+      const res = await api.get('/auth/check-users');
+      return res.data?.hasUsers ?? false;
+    } catch {
+      return false;
+    }
+  };
+
   const logout = () => {
     setUser(null);
     setToken(null);
@@ -95,7 +136,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, token, loading, login, logout, updateUser, userCan, userHasRole }}
+      value={{ user, token, loading, hasUsers, setHasUsers, login, logout, register, checkHasUsers, updateUser, userCan, userHasRole }}
     >
       {children}
     </AuthContext.Provider>

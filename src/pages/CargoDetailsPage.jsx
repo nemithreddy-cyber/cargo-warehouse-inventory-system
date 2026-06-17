@@ -142,43 +142,57 @@ export default function CargoDetailsPage() {
   const statuses = ['Received', 'Stored', 'Ready For Dispatch', 'Dispatched', 'Delivered'];
   const currentIdx = statuses.indexOf(cargo.status);
   
-  const dynamicTimeline = [
-    { 
-      status: 'Received', 
-      date: cargo.arrivalDate, 
-      time: '09:15', 
-      desc: 'Cargo received and scanned at warehouse intake', 
-      done: currentIdx >= 0 
-    },
-    { 
-      status: 'Stored', 
-      date: cargo.arrivalDate, 
-      time: '14:30', 
-      desc: `Allocated to storage slot ${cargo.storageLocation} (${cargo.warehouseZone})`, 
-      done: currentIdx >= 1 
-    },
-    { 
-      status: 'Ready For Dispatch', 
-      date: currentIdx >= 2 ? (cargo.dispatchDate || 'Pending scheduling') : null, 
-      time: '10:00', 
-      desc: 'Packaging verified and ready to be loaded', 
-      done: currentIdx >= 2 
-    },
-    { 
-      status: 'Dispatched', 
-      date: cargo.dispatchDate, 
-      time: '08:00', 
-      desc: dispatch ? `Handed over to driver ${dispatch.driverName} on truck ${dispatch.vehicleNumber}` : 'Handed over to carrier dispatch team', 
-      done: currentIdx >= 3 
-    },
-    { 
-      status: 'Delivered', 
-      date: cargo.deliveryDate, 
-      time: '14:45', 
-      desc: 'Delivered at final destination airport', 
-      done: currentIdx >= 4 
-    },
-  ];
+  const statusDescriptions = {
+    'Received': 'Cargo received and scanned at warehouse intake',
+    'Stored': `Allocated to storage slot ${cargo.storageLocation} (${cargo.warehouseZone})`,
+    'Ready For Dispatch': 'Packaging verified and ready to be loaded',
+    'Dispatched': dispatch ? `Handed over to driver ${dispatch.driverName} on truck ${dispatch.vehicleNumber}` : 'Handed over to carrier dispatch team',
+    'Delivered': 'Delivered at final destination airport',
+  };
+
+  const dynamicTimeline = statuses.map((statusName, idx) => {
+    // Find matching activity log
+    let statusLog = null;
+    if (statusName === 'Received') {
+      statusLog = relatedLogs.find(l => l.action === 'CARGO_CREATED');
+    } else {
+      statusLog = relatedLogs.find(l => 
+        l.action === 'CARGO_STATUS_CHANGED' && 
+        l.details.toLowerCase().includes(`to ${statusName.toLowerCase()}`)
+      );
+    }
+
+    const done = currentIdx >= idx;
+    let displayDate = null;
+    let displayTime = '';
+    
+    if (statusLog) {
+      displayDate = statusLog.date;
+      displayTime = statusLog.time;
+    } else if (done) {
+      if (statusName === 'Received' || statusName === 'Stored') {
+        displayDate = cargo.arrivalDate;
+        displayTime = '09:00';
+      } else if (statusName === 'Ready For Dispatch') {
+        displayDate = cargo.dispatchDate || cargo.arrivalDate;
+        displayTime = '12:00';
+      } else if (statusName === 'Dispatched') {
+        displayDate = cargo.dispatchDate;
+        displayTime = '08:00';
+      } else if (statusName === 'Delivered') {
+        displayDate = cargo.deliveryDate || cargo.dispatchDate;
+        displayTime = '15:30';
+      }
+    }
+
+    return {
+      status: statusName,
+      date: displayDate,
+      time: displayTime,
+      desc: statusDescriptions[statusName],
+      done
+    };
+  });
 
   return (
     <div className="space-y-6 max-w-6xl">
