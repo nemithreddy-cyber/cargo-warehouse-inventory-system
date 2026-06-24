@@ -4,6 +4,704 @@ import api from '../utils/api';
 import ToastContainer from '../components/ToastContainer';
 import { useToast } from '../hooks/useToast';
 
+// ─── Inline Form Components for Chat ──────────────────────────────────────────
+
+const InChatQuoteForm = ({ onSubmit }) => {
+  const [customerName, setCustomerName] = useState('');
+  const [weight, setWeight] = useState('');
+  const [cargoType, setCargoType] = useState('Electronics');
+  const [origin, setOrigin] = useState('BOM');
+  const [destination, setDestination] = useState('DEL');
+  const [rate, setRate] = useState('2.50');
+  const [extra, setExtra] = useState('0');
+  const [pasteText, setPasteText] = useState('');
+
+  const applyPreset = (preset) => {
+    if (preset === 'electronics') {
+      setCustomerName('Swift Logistics');
+      setWeight('350');
+      setCargoType('Electronics');
+      setOrigin('BOM');
+      setDestination('DXB');
+      setRate('3.20');
+      setExtra('150');
+    } else if (preset === 'foods') {
+      setCustomerName('Emirates Foods');
+      setWeight('1200');
+      setCargoType('Perishables');
+      setOrigin('DXB');
+      setDestination('BOM');
+      setRate('1.95');
+      setExtra('250');
+    } else if (preset === 'pharma') {
+      setCustomerName('Global Pharma');
+      setWeight('80');
+      setCargoType('Pharmaceuticals');
+      setOrigin('LHR');
+      setDestination('DEL');
+      setRate('5.20');
+      setExtra('300');
+    }
+  };
+
+  const handleParse = () => {
+    if (!pasteText.trim()) return;
+    const text = pasteText;
+    
+    // Weight
+    const wMatch = text.match(/(\d+(?:\.\d+)?)\s*(?:kg|kilos?|weight)/i) || text.match(/(?:weight|mass)\s*(?:is|of)?\s*(\d+(?:\.\d+)?)/i);
+    if (wMatch) setWeight(wMatch[1]);
+
+    // Cargo Type
+    const cargoTypes = ['electronics', 'pharmaceuticals', 'textiles', 'machinery', 'perishables', 'chemicals'];
+    for (const type of cargoTypes) {
+      if (new RegExp(type, 'i').test(text)) {
+        setCargoType(type.charAt(0).toUpperCase() + type.slice(1));
+        break;
+      }
+    }
+
+    // Origin & Destination
+    const routeMatch = text.match(/\b([A-Za-z]{3})\s*(?:➔|->|to)\s*([A-Za-z]{3})\b/i);
+    if (routeMatch) {
+      setOrigin(routeMatch[1].toUpperCase());
+      setDestination(routeMatch[2].toUpperCase());
+    } else {
+      const originMatch = text.match(/(?:from|origin)\s+([A-Za-z]{3})\b/i);
+      const destMatch = text.match(/(?:to|destination)\s+([A-Za-z]{3})\b/i);
+      if (originMatch) setOrigin(originMatch[1].toUpperCase());
+      if (destMatch) setDestination(destMatch[1].toUpperCase());
+    }
+
+    // Rate
+    const rMatch = text.match(/(?:rate|price)\s*(?:of|is|at)?\s*([\d\.]+)/i) || text.match(/([\d\.]+)\s*(?:\/kg|per\s*kg)/i);
+    if (rMatch) setRate(rMatch[1]);
+
+    // Extra
+    const exMatch = text.match(/(?:extra|charges|fee)\s*(?:of|is)?\s*(\d+)/i);
+    if (exMatch) setExtra(exMatch[1]);
+
+    // Name
+    const nameMatch = text.match(/(?:for|customer|name|client)\s+([^,]+)/i);
+    if (nameMatch) {
+      let name = nameMatch[1].trim();
+      name = name.replace(/(?:quote|kilos|kg|electronics|pharmaceuticals|textiles|machinery|perishables|chemicals|rate|extra|charges|from|to)\b.*/i, '').trim();
+      if (name) setCustomerName(name);
+    }
+    setPasteText('');
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit({
+      customer_name: customerName,
+      weight,
+      cargo_type: cargoType,
+      origin,
+      destination,
+      rate_per_kg: rate,
+      extra_charges: extra
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3 w-full max-w-sm mt-3 text-slate-200">
+      <div className="border-b border-slate-800 pb-2">
+        <span className="text-xs font-bold text-blue-400">Generate Cargo Quotation</span>
+      </div>
+      
+      {/* Presets Row */}
+      <div className="space-y-1">
+        <label className="text-[10px] text-slate-400 font-semibold block">Quick Presets</label>
+        <div className="flex flex-wrap gap-1">
+          <button
+            type="button"
+            onClick={() => applyPreset('electronics')}
+            className="bg-slate-950 hover:bg-slate-800 border border-slate-850 px-2 py-1 rounded text-[10px] text-slate-300 font-medium transition-colors"
+          >
+            📦 Electronics
+          </button>
+          <button
+            type="button"
+            onClick={() => applyPreset('foods')}
+            className="bg-slate-950 hover:bg-slate-800 border border-slate-850 px-2 py-1 rounded text-[10px] text-slate-300 font-medium transition-colors"
+          >
+            🍎 Fresh Foods
+          </button>
+          <button
+            type="button"
+            onClick={() => applyPreset('pharma')}
+            className="bg-slate-950 hover:bg-slate-800 border border-slate-850 px-2 py-1 rounded text-[10px] text-slate-300 font-medium transition-colors"
+          >
+            💊 Biotech Pharma
+          </button>
+        </div>
+      </div>
+
+      {/* Smart Paste Block */}
+      <div className="space-y-1 bg-slate-950 p-2 rounded-lg border border-slate-850">
+        <label className="text-[10px] text-blue-400 font-semibold flex items-center gap-1">
+          <MdIcons.MdAutoAwesome className="text-xs animate-pulse text-blue-400" /> Smart Text Auto-Fill
+        </label>
+        <div className="flex gap-1">
+          <input
+            type="text"
+            placeholder="e.g. Swift Logistics, 500kg electronics, BOM to DXB, rate 2.5"
+            value={pasteText}
+            onChange={(e) => setPasteText(e.target.value)}
+            className="flex-1 bg-slate-900 border border-slate-800 rounded px-2.5 py-1 text-[11px] text-white focus:outline-none placeholder:text-slate-650"
+          />
+          <button
+            type="button"
+            onClick={handleParse}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] px-2.5 rounded transition-colors"
+          >
+            Parse
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-[10px] text-slate-400 font-semibold">Customer Name</label>
+        <input
+          type="text" required
+          value={customerName}
+          onChange={(e) => setCustomerName(e.target.value)}
+          className="w-full bg-slate-950 border border-slate-850 rounded px-2.5 py-1 text-xs text-white focus:outline-none"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <label className="text-[10px] text-slate-400 font-semibold">Weight (kg)</label>
+          <input
+            type="number" required min="1"
+            value={weight}
+            onChange={(e) => setWeight(e.target.value)}
+            className="w-full bg-slate-950 border border-slate-850 rounded px-2.5 py-1 text-xs text-white focus:outline-none"
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-[10px] text-slate-400 font-semibold">Cargo Type</label>
+          <select
+            value={cargoType}
+            onChange={(e) => setCargoType(e.target.value)}
+            className="w-full bg-slate-950 border border-slate-850 rounded px-2.5 py-1 text-xs text-white focus:outline-none"
+          >
+            {['Electronics', 'Pharmaceuticals', 'Textiles', 'Machinery', 'Perishables', 'Chemicals'].map(t => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <label className="text-[10px] text-slate-400 font-semibold">Origin (IATA)</label>
+          <input
+            type="text" required maxLength="3"
+            value={origin}
+            onChange={(e) => setOrigin(e.target.value.toUpperCase())}
+            className="w-full bg-slate-950 border border-slate-850 rounded px-2.5 py-1 text-xs text-white focus:outline-none"
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-[10px] text-slate-400 font-semibold">Destination (IATA)</label>
+          <input
+            type="text" required maxLength="3"
+            value={destination}
+            onChange={(e) => setDestination(e.target.value.toUpperCase())}
+            className="w-full bg-slate-950 border border-slate-850 rounded px-2.5 py-1 text-xs text-white focus:outline-none"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <label className="text-[10px] text-slate-400 font-semibold">Rate per kg (AED)</label>
+          <input
+            type="number" step="0.01" required
+            value={rate}
+            onChange={(e) => setRate(e.target.value)}
+            className="w-full bg-slate-950 border border-slate-850 rounded px-2.5 py-1 text-xs text-white focus:outline-none"
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-[10px] text-slate-400 font-semibold">Extra Charges (AED)</label>
+          <input
+            type="number" required
+            value={extra}
+            onChange={(e) => setExtra(e.target.value)}
+            className="w-full bg-slate-950 border border-slate-850 rounded px-2.5 py-1 text-xs text-white focus:outline-none"
+          />
+        </div>
+      </div>
+
+      <button
+        type="submit"
+        className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs transition-colors mt-2"
+      >
+        Generate Quotation
+      </button>
+    </form>
+  );
+};
+
+const InChatClaimForm = ({ onSubmit, cargoList }) => {
+  const [cargoId, setCargoId] = useState('');
+  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
+  const [docUrl, setDocUrl] = useState('');
+  const [pasteText, setPasteText] = useState('');
+
+  const applyPreset = (preset) => {
+    if (cargoList.length > 0 && !cargoId) {
+      setCargoId(cargoList[0].id);
+    }
+    if (preset === 'forklift') {
+      setAmount('1200');
+      setDescription('Water leakage and physical crush during forklift transport in sector A-03.');
+      setDocUrl('damage_forklift_report.pdf');
+    } else if (preset === 'temp') {
+      setAmount('3400');
+      setDescription('Cooling unit malfunction in warehouse zone B causing temperature deviation.');
+      setDocUrl('temp_log_alert.pdf');
+    }
+  };
+
+  const handleParse = () => {
+    if (!pasteText.trim()) return;
+    const text = pasteText;
+
+    // Amount
+    const amMatch = text.match(/(?:amount|claim|cost|price)\s*(?:of|is)?\s*(\d+)/i) || text.match(/(\d+)\s*(?:aed|usd|dirhams)/i);
+    if (amMatch) setAmount(amMatch[1]);
+
+    // Cargo ID check: look for CRG-XXXXXXX in cargo list
+    const refMatch = text.match(/\b(CRG-\d+)\b/i);
+    if (refMatch) {
+      const matchedCargo = cargoList.find(c => c.cargo_id.toLowerCase() === refMatch[1].toLowerCase());
+      if (matchedCargo) setCargoId(matchedCargo.id);
+    } else if (cargoList.length > 0 && !cargoId) {
+      setCargoId(cargoList[0].id);
+    }
+
+    // Description (everything else or the description itself)
+    const cleanDesc = text.replace(/(?:amount|claim|cost|price|aed|usd|dirhams|crg-\d+)\s*is?\s*(\d+)?/gi, '').trim();
+    setDescription(cleanDesc || text);
+    
+    setPasteText('');
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!cargoId) return;
+    onSubmit({
+      cargo_id: cargoId,
+      amount,
+      description,
+      document_url: docUrl || null
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3 w-full max-w-sm mt-3 text-slate-200">
+      <div className="border-b border-slate-800 pb-2">
+        <span className="text-xs font-bold text-blue-400">File Insurance Claim</span>
+      </div>
+
+      {/* Presets Row */}
+      <div className="space-y-1">
+        <label className="text-[10px] text-slate-400 font-semibold block">Quick Presets</label>
+        <div className="flex flex-wrap gap-1">
+          <button
+            type="button"
+            onClick={() => applyPreset('forklift')}
+            className="bg-slate-950 hover:bg-slate-800 border border-slate-850 px-2 py-1 rounded text-[10px] text-slate-300 font-medium transition-colors"
+          >
+            📦 Forklift Damage
+          </button>
+          <button
+            type="button"
+            onClick={() => applyPreset('temp')}
+            className="bg-slate-950 hover:bg-slate-800 border border-slate-850 px-2 py-1 rounded text-[10px] text-slate-300 font-medium transition-colors"
+          >
+            ❄️ Temp Deviation
+          </button>
+        </div>
+      </div>
+
+      {/* Smart Paste Block */}
+      <div className="space-y-1 bg-slate-950 p-2 rounded-lg border border-slate-850">
+        <label className="text-[10px] text-blue-400 font-semibold flex items-center gap-1">
+          <MdIcons.MdAutoAwesome className="text-xs animate-pulse text-blue-400" /> Smart Text Auto-Fill
+        </label>
+        <div className="flex gap-1">
+          <input
+            type="text"
+            placeholder="e.g. 1200 AED damage forklift water leak"
+            value={pasteText}
+            onChange={(e) => setPasteText(e.target.value)}
+            className="flex-1 bg-slate-900 border border-slate-800 rounded px-2.5 py-1 text-[11px] text-white focus:outline-none placeholder:text-slate-650"
+          />
+          <button
+            type="button"
+            onClick={handleParse}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] px-2.5 rounded transition-colors"
+          >
+            Parse
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-[10px] text-slate-400 font-semibold">Select Cargo</label>
+        <select
+          value={cargoId} required
+          onChange={(e) => setCargoId(e.target.value)}
+          className="w-full bg-slate-950 border border-slate-850 rounded px-2.5 py-1 text-xs text-white focus:outline-none"
+        >
+          <option value="">-- Select Shipment --</option>
+          {cargoList.map(c => (
+            <option key={c.id} value={c.id}>{c.cargo_id} ({c.customer_name})</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-[10px] text-slate-400 font-semibold">Claim Amount (AED)</label>
+        <input
+          type="number" required
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          className="w-full bg-slate-950 border border-slate-850 rounded px-2.5 py-1 text-xs text-white focus:outline-none"
+        />
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-[10px] text-slate-400 font-semibold">Documents Reference / Photo URL</label>
+        <input
+          type="text"
+          placeholder="E.g. damage_receipt.jpg"
+          value={docUrl}
+          onChange={(e) => setDocUrl(e.target.value)}
+          className="w-full bg-slate-950 border border-slate-850 rounded px-2.5 py-1 text-xs text-white focus:outline-none"
+        />
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-[10px] text-slate-400 font-semibold">Description of Damage</label>
+        <textarea
+          rows="2" required
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className="w-full bg-slate-950 border border-slate-850 rounded px-2.5 py-1 text-xs text-white focus:outline-none"
+        />
+      </div>
+
+      <button
+        type="submit"
+        className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs transition-colors mt-2"
+      >
+        Submit Claim
+      </button>
+    </form>
+  );
+};
+
+const InChatComplaintForm = ({ onSubmit }) => {
+  const [customerName, setCustomerName] = useState('');
+  const [subject, setSubject] = useState('');
+  const [description, setDescription] = useState('');
+  const [pasteText, setPasteText] = useState('');
+
+  const applyPreset = (preset) => {
+    if (preset === 'delay') {
+      setCustomerName('Swift Logistics');
+      setSubject('Delay on CRG-20260002');
+      setDescription('Expected delivery was delayed by 24 hours at transshipment airport, causing customer complaints.');
+    } else if (preset === 'billing') {
+      setCustomerName('Falcon Air');
+      setSubject('Invoice Overcharge');
+      setDescription('Billed extra handling charges of 500 AED for fuel surcharge which was already fully paid in original quote.');
+    }
+  };
+
+  const handleParse = () => {
+    if (!pasteText.trim()) return;
+    const text = pasteText;
+
+    // Customer
+    const custMatch = text.match(/(?:customer|client|name|company)\s+([^,]+)/i);
+    if (custMatch) {
+      let name = custMatch[1].trim();
+      name = name.replace(/(?:complaint|subject|description|about|delay|fee|billed|invoice)\b.*/i, '').trim();
+      if (name) setCustomerName(name);
+    } else {
+      const words = text.split(/\s+/);
+      if (words.length > 2) {
+        setCustomerName(words[0] + ' ' + words[1]);
+      }
+    }
+
+    // Subject
+    const subMatch = text.match(/(?:subject|about)\s+([^.]+)/i);
+    if (subMatch) {
+      setSubject(subMatch[1].trim());
+    } else {
+      const firstSentence = text.split(/[.!?]/)[0].trim();
+      setSubject(firstSentence.slice(0, 50));
+    }
+
+    // Description
+    setDescription(text);
+    setPasteText('');
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit({
+      customer_name: customerName,
+      subject,
+      description
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3 w-full max-w-sm mt-3 text-slate-200">
+      <div className="border-b border-slate-800 pb-2">
+        <span className="text-xs font-bold text-blue-400">File Customer Complaint</span>
+      </div>
+
+      {/* Presets Row */}
+      <div className="space-y-1">
+        <label className="text-[10px] text-slate-400 font-semibold block">Quick Presets</label>
+        <div className="flex flex-wrap gap-1">
+          <button
+            type="button"
+            onClick={() => applyPreset('delay')}
+            className="bg-slate-950 hover:bg-slate-800 border border-slate-850 px-2 py-1 rounded text-[10px] text-slate-300 font-medium transition-colors"
+          >
+            🚚 Delay Dispute
+          </button>
+          <button
+            type="button"
+            onClick={() => applyPreset('billing')}
+            className="bg-slate-950 hover:bg-slate-800 border border-slate-850 px-2 py-1 rounded text-[10px] text-slate-300 font-medium transition-colors"
+          >
+            💵 Overbilling
+          </button>
+        </div>
+      </div>
+
+      {/* Smart Paste Block */}
+      <div className="space-y-1 bg-slate-950 p-2 rounded-lg border border-slate-850">
+        <label className="text-[10px] text-blue-400 font-semibold flex items-center gap-1">
+          <MdIcons.MdAutoAwesome className="text-xs animate-pulse text-blue-400" /> Smart Text Auto-Fill
+        </label>
+        <div className="flex gap-1">
+          <input
+            type="text"
+            placeholder="e.g. Swift Logistics customer, delayed flight complaint"
+            value={pasteText}
+            onChange={(e) => setPasteText(e.target.value)}
+            className="flex-1 bg-slate-900 border border-slate-800 rounded px-2.5 py-1 text-[11px] text-white focus:outline-none placeholder:text-slate-650"
+          />
+          <button
+            type="button"
+            onClick={handleParse}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-[10px] px-2.5 rounded transition-colors"
+          >
+            Parse
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-[10px] text-slate-400 font-semibold">Customer Name</label>
+        <input
+          type="text" required
+          value={customerName}
+          onChange={(e) => setCustomerName(e.target.value)}
+          className="w-full bg-slate-950 border border-slate-850 rounded px-2.5 py-1 text-xs text-white focus:outline-none"
+        />
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-[10px] text-slate-400 font-semibold">Subject</label>
+        <input
+          type="text" required
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+          className="w-full bg-slate-950 border border-slate-850 rounded px-2.5 py-1 text-xs text-white focus:outline-none"
+        />
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-[10px] text-slate-400 font-semibold">Detailed Description</label>
+        <textarea
+          rows="2" required
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className="w-full bg-slate-950 border border-slate-850 rounded px-2.5 py-1 text-xs text-white focus:outline-none"
+        />
+      </div>
+
+      <button
+        type="submit"
+        className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs transition-colors mt-2"
+      >
+        File Complaint
+      </button>
+    </form>
+  );
+};
+
+const InChatCleanerForm = ({ onSubmit }) => {
+  const [description, setDescription] = useState('');
+
+  const applyPreset = (preset) => {
+    if (preset === 'messy1') {
+      setDescription('5 big boxes of cargo components, fragile handle with care, urgent cargo, stored temp control');
+    } else if (preset === 'messy2') {
+      setDescription('lot of shirts textile boxes 12 units of size XL weight around 120kg total client nemith reddy');
+    }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit(description);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3 w-full max-w-sm mt-3 text-slate-200">
+      <div className="border-b border-slate-800 pb-2 flex justify-between items-center">
+        <span className="text-xs font-bold text-blue-400">Clean Cargo Description</span>
+      </div>
+
+      {/* Presets Row */}
+      <div className="space-y-1">
+        <label className="text-[10px] text-slate-400 font-semibold block">Quick Presets</label>
+        <div className="flex flex-wrap gap-1">
+          <button
+            type="button"
+            onClick={() => applyPreset('messy1')}
+            className="bg-slate-950 hover:bg-slate-800 border border-slate-850 px-2 py-1 rounded text-[10px] text-slate-300 font-medium transition-colors"
+          >
+            📋 Messy Cargo 1
+          </button>
+          <button
+            type="button"
+            onClick={() => applyPreset('messy2')}
+            className="bg-slate-950 hover:bg-slate-800 border border-slate-850 px-2 py-1 rounded text-[10px] text-slate-300 font-medium transition-colors"
+          >
+            📋 Messy Cargo 2
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-[10px] text-slate-400 font-semibold">Raw Notes / Description</label>
+        <textarea
+          rows="3" required
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className="w-full bg-slate-950 border border-slate-850 rounded px-2.5 py-1 text-xs text-white focus:outline-none"
+        />
+      </div>
+
+      <button
+        type="submit"
+        className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs transition-colors mt-2"
+      >
+        Clean Manifest Description
+      </button>
+    </form>
+  );
+};
+
+const InChatCustomsForm = ({ onSubmit, cargoList }) => {
+  const [cargoId, setCargoId] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!cargoId) return;
+    const cargo = cargoList.find(c => c.id.toString() === cargoId);
+    onSubmit(cargo);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3 w-full max-w-sm mt-3 text-slate-200">
+      <div className="border-b border-slate-800 pb-2">
+        <span className="text-xs font-bold text-blue-400">Select Cargo for Customs Audit</span>
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-[10px] text-slate-400 font-semibold">Cargo Shipment</label>
+        <select
+          value={cargoId} required
+          onChange={(e) => setCargoId(e.target.value)}
+          className="w-full bg-slate-950 border border-slate-850 rounded px-2.5 py-1 text-xs text-white focus:outline-none"
+        >
+          <option value="">-- Choose Shipment --</option>
+          {cargoList.map(c => (
+            <option key={c.id} value={c.id}>{c.cargo_id} ({c.customer_name} - {c.cargo_type})</option>
+          ))}
+        </select>
+      </div>
+
+      <button
+        type="submit"
+        className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs transition-colors mt-2"
+      >
+        Load Checklist
+      </button>
+    </form>
+  );
+};
+
+const InChatRouteSelectForm = ({ onSubmit, cargoList }) => {
+  const [cargoId, setCargoId] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!cargoId) return;
+    const cargo = cargoList.find(c => c.id.toString() === cargoId);
+    onSubmit(cargo);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3 w-full max-w-sm mt-3 text-slate-200">
+      <div className="border-b border-slate-800 pb-2">
+        <span className="text-xs font-bold text-blue-400">Select Cargo for Flight Path Optimization</span>
+      </div>
+
+      <div className="space-y-1">
+        <label className="text-[10px] text-slate-400 font-semibold">Cargo Shipment</label>
+        <select
+          value={cargoId} required
+          onChange={(e) => setCargoId(e.target.value)}
+          className="w-full bg-slate-950 border border-slate-850 rounded px-2.5 py-1 text-xs text-white focus:outline-none"
+        >
+          <option value="">-- Choose Shipment --</option>
+          {cargoList.map(c => (
+            <option key={c.id} value={c.id}>{c.cargo_id} ({c.customer_name} - {c.cargo_type})</option>
+          ))}
+        </select>
+      </div>
+
+      <button
+        type="submit"
+        className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs transition-colors mt-2"
+      >
+        Calculate Paths
+      </button>
+    </form>
+  );
+};
+
+// ─── Main AI Operations Page ──────────────────────────────────────────────────
+
 export default function AIOperationsPage() {
   const { toasts, success, error, removeToast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -22,7 +720,6 @@ export default function AIOperationsPage() {
   // Chatbot states
   const [messages, setMessages] = useState([]);
   const [inputVal, setInputVal] = useState('');
-  const [chatState, setChatState] = useState(null); // { type, step, data }
   const [isTyping, setIsTyping] = useState(false);
 
   const chatEndRef = useRef(null);
@@ -69,17 +766,7 @@ export default function AIOperationsPage() {
         sender: 'bot',
         text: `👋 Hello! I am your **ORBEM AI Operations Assistant**. I can help you automate calculations, check customs compliance, recommend flights, and manage insurance claims.
 
-**Here's what I can do for you:**
-* 📋 **Generate Quotation** - Step-by-step air cargo rate estimation
-* 🛃 **Customs Checklist** - Verify customs documents for a shipment
-* ✨ **Clean Description** - Standardize messy descriptions for airway bills
-* 🗺️ **Route Recommendation** - Optimize flight paths for cargo
-* 🛡️ **Insurance Claim** - Log cargo damages and files
-* ✈️ **Airline Rates** - View current global carrier shipping rates
-* 💬 **Customer Complaint** - Register customer issues
-* 📊 **Shipment Insights** - General analytics and recommendations
-
-Select a quick action chip below or type your request directly!`,
+**Choose an operation using the quick action chips below to open an interactive form directly in the chat, or type your request!**`,
         timestamp: new Date()
       }
     ]);
@@ -100,72 +787,50 @@ Select a quick action chip below or type your request directly!`,
           timestamp: new Date()
         }
       ]);
-    }, 600);
+    }, 400);
   };
 
   // ─── Guided Flows State Machine ──────────────────────────────────────────
 
   const handleActionClick = (actionType) => {
-    // Reset any ongoing flow
-    setChatState(null);
-    
     // Add user message indicating action
     setMessages((prev) => [
       ...prev,
       {
         id: `action-${Date.now()}`,
         sender: 'user',
-        text: `Starting action: ${actionType.replace('_', ' ').toUpperCase()}`,
+        text: `Opened form: ${actionType.replace('_', ' ').toUpperCase()}`,
         timestamp: new Date()
       }
     ]);
 
     if (actionType === 'quote') {
-      setChatState({ type: 'quote', step: 'customer', data: {} });
-      addBotMessage('Let\'s generate an **Air Cargo Quotation**! 📋\n\nPlease enter the **Customer/Recipient Name**:');
+      addBotMessage('Please fill out the details below to generate your **Quotation**:', 'form_quote');
     } 
     else if (actionType === 'customs') {
-      setChatState({ type: 'customs', step: 'select_cargo', data: {} });
-      addBotMessage('Let\'s check **Customs & Documents** 🛃\n\nPlease select one of the active shipments below to inspect its checklist:');
+      addBotMessage('Please select a cargo shipment to generate the **Customs Checklist**:', 'form_customs');
     }
     else if (actionType === 'cleaner') {
-      setChatState({ type: 'cleaner', step: 'text', data: {} });
-      addBotMessage('Let\'s **Clean a Cargo Description** ✨\n\nPlease paste or type the raw cargo description you want to clean:');
+      addBotMessage('Please enter the raw cargo description manifest to **Clean & Standardize**:', 'form_cleaner');
     }
     else if (actionType === 'routes') {
-      setChatState({ type: 'routes', step: 'select_cargo', data: {} });
-      addBotMessage('Let\'s check **Route Recommendations** 🗺️\n\nPlease select one of the active shipments below to see flight paths:');
+      addBotMessage('Select a cargo shipment to calculate **Flight Route Recommendations**:', 'form_routes');
     }
     else if (actionType === 'claim') {
-      setChatState({ type: 'claim', step: 'cargo', data: {} });
-      addBotMessage('Let\'s submit an **Insurance Damage Claim** 🛡️\n\nPlease select the cargo shipment associated with the claim:');
+      addBotMessage('Please fill out the claim details below to submit a **Damage Claim**:', 'form_claim');
     }
     else if (actionType === 'rates') {
       fetchAirlineRatesDirect();
     }
     else if (actionType === 'complaint') {
-      setChatState({ type: 'complaint', step: 'customer', data: {} });
-      addBotMessage('Let\'s file a **Customer Complaint** 💬\n\nPlease enter the **Customer\'s Name**:');
+      addBotMessage('Please fill out the form below to file a **Customer Complaint**:', 'form_complaint');
     }
     else if (actionType === 'insights') {
       fetchInsightsDirect();
     }
   };
 
-  const handleAbort = () => {
-    setChatState(null);
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: `abort-${Date.now()}`,
-        sender: 'bot',
-        text: '❌ Action aborted. What else can I help you with?',
-        timestamp: new Date()
-      }
-    ]);
-  };
-
-  // Direct fetchers (no guided inputs needed)
+  // Direct fetchers (no inputs needed)
   const fetchAirlineRatesDirect = async () => {
     setIsTyping(true);
     try {
@@ -194,7 +859,7 @@ Select a quick action chip below or type your request directly!`,
     }
   };
 
-  // Handling Text Submissions from Chat Input
+  // Handling Text Submissions from Chat Input (NLU Fallback)
   const handleUserMessageSubmit = async (e) => {
     e.preventDefault();
     if (!inputVal.trim()) return;
@@ -213,233 +878,8 @@ Select a quick action chip below or type your request directly!`,
       }
     ]);
 
-    // Check if in a guided chat flow
-    if (chatState) {
-      processGuidedFlow(userText);
-    } else {
-      // Natural language / command detection fallback
-      processGeneralCommand(userText);
-    }
-  };
-
-  // Process inputs for guided steps
-  const processGuidedFlow = async (text) => {
-    const { type, step, data } = chatState;
-
-    // QUOTATION GUIDED FLOW
-    if (type === 'quote') {
-      if (step === 'customer') {
-        const nextData = { ...data, customer_name: text };
-        setChatState({ type, step: 'weight', data: nextData });
-        addBotMessage(`Customer: **${text}**\n\nNext, enter the **Cargo Weight (in kg)**:`);
-      }
-      else if (step === 'weight') {
-        const weight = parseFloat(text);
-        if (isNaN(weight) || weight <= 0) {
-          addBotMessage('⚠️ Weight must be a valid positive number. Please enter the weight again:');
-          return;
-        }
-        const nextData = { ...data, weight };
-        setChatState({ type, step: 'type', data: nextData });
-        addBotMessage(`Weight: **${weight} kg**\n\nChoose **Cargo Type**:\n(Electronics, Pharmaceuticals, Textiles, Machinery, Perishables, Chemicals)`);
-      }
-      else if (step === 'type') {
-        const typeVal = text.trim();
-        const nextData = { ...data, cargo_type: typeVal };
-        setChatState({ type, step: 'origin', data: nextData });
-        addBotMessage(`Type: **${typeVal}**\n\nEnter the 3-letter **Origin Airport IATA Code** (e.g. BOM):`);
-      }
-      else if (step === 'origin') {
-        const origin = text.trim().toUpperCase();
-        if (origin.length !== 3) {
-          addBotMessage('⚠️ Airport code must be exactly 3 letters. Please re-enter:');
-          return;
-        }
-        const nextData = { ...data, origin };
-        setChatState({ type, step: 'destination', data: nextData });
-        addBotMessage(`Origin: **${origin}**\n\nEnter the 3-letter **Destination Airport IATA Code** (e.g. DEL):`);
-      }
-      else if (step === 'destination') {
-        const destination = text.trim().toUpperCase();
-        if (destination.length !== 3) {
-          addBotMessage('⚠️ Airport code must be exactly 3 letters. Please re-enter:');
-          return;
-        }
-        const nextData = { ...data, destination };
-        setChatState({ type, step: 'rate', data: nextData });
-        addBotMessage(`Destination: **${destination}**\n\nEnter the **Rate per kg (in AED)** (e.g., 2.50):`);
-      }
-      else if (step === 'rate') {
-        const rate = parseFloat(text);
-        if (isNaN(rate) || rate <= 0) {
-          addBotMessage('⚠️ Rate must be a valid positive number. Please re-enter:');
-          return;
-        }
-        const nextData = { ...data, rate_per_kg: rate };
-        setChatState({ type, step: 'extra', data: nextData });
-        addBotMessage(`Rate: **${rate} AED/kg**\n\nEnter any **Extra Charges (in AED)** (enter 0 if none):`);
-      }
-      else if (step === 'extra') {
-        const extra = parseFloat(text);
-        if (isNaN(extra) || extra < 0) {
-          addBotMessage('⚠️ Extra charges must be a valid number. Please re-enter:');
-          return;
-        }
-        const finalData = { ...data, extra_charges: extra };
-        setChatState(null); // Clear state
-
-        // Call Quotation Post API
-        setIsTyping(true);
-        try {
-          const res = await api.post('/ai-operations/quotations', finalData);
-          if (res.data.success) {
-            success('Quotation generated successfully!');
-            fetchLogs(); // refresh sidebar list
-            addBotMessage(`🎉 **Air Cargo Quotation generated successfully!**`, 'quotation_result', {
-              ...finalData,
-              quote_id: res.data.data.quote_id,
-              total_charge: res.data.data.total_charge
-            });
-          }
-        } catch (err) {
-          addBotMessage('❌ Failed to generate quotation. Please try again.');
-        } finally {
-          setIsTyping(false);
-        }
-      }
-    }
-
-    // CUSTOMS GUIDED FLOW
-    else if (type === 'customs') {
-      if (step === 'select_cargo') {
-        // Try to match the selected cargo
-        const cargoObj = cargoList.find(c => c.cargo_id.toLowerCase() === text.toLowerCase() || c.id.toString() === text);
-        if (!cargoObj) {
-          addBotMessage('⚠️ Cargo ID not found. Please select from the buttons above or enter a valid Cargo ID:');
-          return;
-        }
-        setChatState(null);
-        handleFetchCustomsChecklist(cargoObj.id, cargoObj.cargo_id, cargoObj.cargo_type);
-      }
-    }
-
-    // DESCRIPTION CLEANER FLOW
-    else if (type === 'cleaner') {
-      if (step === 'text') {
-        setChatState(null);
-        setIsTyping(true);
-        try {
-          const res = await api.post('/clean-description', { description: text });
-          if (res.data.success) {
-            success('Cargo description cleaned!');
-            addBotMessage(`✨ **Standardized Cargo Description Manifest:**`, 'cleaner_result', res.data.data);
-          }
-        } catch (err) {
-          addBotMessage('❌ Description cleaner endpoint error.');
-        } finally {
-          setIsTyping(false);
-        }
-      }
-    }
-
-    // ROUTE RECOMMENDER FLOW
-    else if (type === 'routes') {
-      if (step === 'select_cargo') {
-        const cargoObj = cargoList.find(c => c.cargo_id.toLowerCase() === text.toLowerCase() || c.id.toString() === text);
-        if (!cargoObj) {
-          addBotMessage('⚠️ Cargo ID not found. Please select from the buttons above or enter a valid Cargo ID:');
-          return;
-        }
-        setChatState(null);
-        handleFetchRouteOptions(cargoObj.id, cargoObj.cargo_id);
-      }
-    }
-
-    // CLAIMS GUIDED FLOW
-    else if (type === 'claim') {
-      if (step === 'cargo') {
-        const cargoObj = cargoList.find(c => c.cargo_id.toLowerCase() === text.toLowerCase() || c.id.toString() === text);
-        if (!cargoObj) {
-          addBotMessage('⚠️ Cargo ID not found. Please select a valid cargo from the buttons:');
-          return;
-        }
-        const nextData = { ...data, cargo_id: cargoObj.id, cargo_ref: cargoObj.cargo_id };
-        setChatState({ type, step: 'amount', data: nextData });
-        addBotMessage(`Selected Cargo: **${cargoObj.cargo_id}**\n\nEnter the **Claim Amount (in AED)**:`);
-      }
-      else if (step === 'amount') {
-        const amount = parseFloat(text);
-        if (isNaN(amount) || amount <= 0) {
-          addBotMessage('⚠️ Claim amount must be a positive number. Please re-enter:');
-          return;
-        }
-        const nextData = { ...data, amount };
-        setChatState({ type, step: 'desc', data: nextData });
-        addBotMessage(`Claim Amount: **${amount} AED**\n\nPlease describe the **cargo damage or issue details**:`);
-      }
-      else if (step === 'desc') {
-        const nextData = { ...data, description: text };
-        setChatState({ type, step: 'doc', data: nextData });
-        addBotMessage(`Description logged.\n\n(Optional) Enter **document file name / photo URL** (enter '-' to skip):`);
-      }
-      else if (step === 'doc') {
-        const doc_url = (text === '-' || text.toLowerCase() === 'skip') ? null : text;
-        const finalData = { ...data, document_url: doc_url };
-        setChatState(null);
-
-        setIsTyping(true);
-        try {
-          const res = await api.post('/ai-operations/claims', finalData);
-          if (res.data.success) {
-            success('Claim submitted successfully!');
-            fetchLogs();
-            addBotMessage(`🛡️ **Insurance Claim submitted successfully!**`, 'claim_result', {
-              ...finalData,
-              claim_id: res.data.data.claim_id
-            });
-          }
-        } catch (err) {
-          addBotMessage('❌ Failed to submit claim. Please try again.');
-        } finally {
-          setIsTyping(false);
-        }
-      }
-    }
-
-    // COMPLAINT GUIDED FLOW
-    else if (type === 'complaint') {
-      if (step === 'customer') {
-        const nextData = { ...data, customer_name: text };
-        setChatState({ type, step: 'subject', data: nextData });
-        addBotMessage(`Customer: **${text}**\n\nEnter the **Complaint Subject / Reason**:`);
-      }
-      else if (step === 'subject') {
-        const nextData = { ...data, subject: text };
-        setChatState({ type, step: 'desc', data: nextData });
-        addBotMessage(`Subject: **${text}**\n\nPlease enter the **detailed description** of the complaint:`);
-      }
-      else if (step === 'desc') {
-        const finalData = { ...data, description: text };
-        setChatState(null);
-
-        setIsTyping(true);
-        try {
-          const res = await api.post('/ai-operations/complaints', finalData);
-          if (res.data.success) {
-            success('Complaint filed!');
-            fetchLogs();
-            addBotMessage(`💬 **Customer Complaint registered successfully!**`, 'complaint_result', {
-              ...finalData,
-              complaint_id: res.data.data.complaint_id
-            });
-          }
-        } catch (err) {
-          addBotMessage('❌ Failed to register complaint.');
-        } finally {
-          setIsTyping(false);
-        }
-      }
-    }
+    // Natural language / command detection fallback
+    processGeneralCommand(userText);
   };
 
   // General Commands Detection (Natural language heuristics)
@@ -464,20 +904,41 @@ Select a quick action chip below or type your request directly!`,
     } else {
       addBotMessage(`I'm not sure how to process: "${text}".
 
-Could you please clarify your request, or select one of the quick actions below? 👇`);
+Could you please select one of the quick actions below to open a form? 👇`);
     }
   };
 
-  // Custom checklist retrieval helper
-  const handleFetchCustomsChecklist = async (id, cargoIdStr, cargoType) => {
+  // ─── Form Submission Handler APIs ──────────────────────────────────────────
+
+  const handleQuoteFormSubmit = async (formData) => {
     setIsTyping(true);
     try {
-      const res = await api.get(`/ai-operations/customs-checklist/${id}`);
+      const res = await api.post('/ai-operations/quotations', formData);
+      if (res.data.success) {
+        success('Quotation generated successfully!');
+        fetchLogs(); // refresh sidebar list
+        addBotMessage(`🎉 **Air Cargo Quotation generated successfully!**`, 'quotation_result', {
+          ...formData,
+          quote_id: res.data.data.quote_id,
+          total_charge: res.data.data.total_charge
+        });
+      }
+    } catch (err) {
+      addBotMessage('❌ Failed to generate quotation. Please try again.');
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  const handleCustomsFormSubmit = async (cargoObj) => {
+    setIsTyping(true);
+    try {
+      const res = await api.get(`/ai-operations/customs-checklist/${cargoObj.id}`);
       const checklist = res.data.data || [];
-      addBotMessage(`Checklist loaded for cargo **${cargoIdStr}** (${cargoType}) 🛃:`, 'customs_checklist', {
-        cargoId: id,
-        cargoRef: cargoIdStr,
-        cargoType,
+      addBotMessage(`Checklist loaded for cargo **${cargoObj.cargo_id}** (${cargoObj.cargo_type}) 🛃:`, 'customs_checklist', {
+        cargoId: cargoObj.id,
+        cargoRef: cargoObj.cargo_id,
+        cargoType: cargoObj.cargo_type,
         checklist
       });
     } catch (err) {
@@ -487,12 +948,84 @@ Could you please clarify your request, or select one of the quick actions below?
     }
   };
 
+  const handleCleanerFormSubmit = async (rawText) => {
+    setIsTyping(true);
+    try {
+      const res = await api.post('/ai-operations/clean-description', { description: rawText });
+      if (res.data.success) {
+        success('Cargo description cleaned!');
+        addBotMessage(`✨ **Standardized Cargo Description Manifest:**`, 'cleaner_result', res.data.data);
+      }
+    } catch (err) {
+      addBotMessage('❌ Description cleaner endpoint error.');
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  const handleRouteSelectFormSubmit = async (cargoObj) => {
+    setIsTyping(true);
+    try {
+      const res = await api.get(`/ai-operations/route-options/${cargoObj.id}`);
+      const routeData = res.data.data || null;
+      addBotMessage(`Route recommendations for **${cargoObj.cargo_id}** 🗺️:`, 'route_options', {
+        cargoId: cargoObj.id,
+        cargoRef: cargoObj.cargo_id,
+        selected_route: routeData?.selected_route || '',
+        routes: routeData ? JSON.parse(routeData.routes_json) : []
+      });
+    } catch (err) {
+      addBotMessage('⚠️ Failed to fetch route recommendations.');
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  const handleClaimFormSubmit = async (claimData) => {
+    setIsTyping(true);
+    try {
+      const res = await api.post('/ai-operations/claims', claimData);
+      if (res.data.success) {
+        success('Claim submitted successfully!');
+        fetchLogs();
+        addBotMessage(`🛡️ **Insurance Claim submitted successfully!**`, 'claim_result', {
+          ...claimData,
+          claim_id: res.data.data.claim_id,
+          cargo_ref: cargoList.find(c => c.id.toString() === claimData.cargo_id.toString())?.cargo_id || 'Shipment'
+        });
+      }
+    } catch (err) {
+      addBotMessage('❌ Failed to submit claim. Please try again.');
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  const handleComplaintFormSubmit = async (complaintData) => {
+    setIsTyping(true);
+    try {
+      const res = await api.post('/ai-operations/complaints', complaintData);
+      if (res.data.success) {
+        success('Complaint filed!');
+        fetchLogs();
+        addBotMessage(`💬 **Customer Complaint registered successfully!**`, 'complaint_result', {
+          ...complaintData,
+          complaint_id: res.data.data.complaint_id
+        });
+      }
+    } catch (err) {
+      addBotMessage('❌ Failed to register complaint.');
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  // Interactive buttons inside chat bubbles handlers
   const handleVerifyDocumentInChat = async (messageId, docId, cargoId) => {
     try {
       await api.post('/ai-operations/customs-checklist/verify', { id: docId, verified_by: 'Super Admin' });
       success('Document verified successfully!');
       
-      // Update specific message item's checklist data in state
       setMessages(prev => prev.map(msg => {
         if (msg.id === messageId && msg.type === 'customs_checklist') {
           const updatedChecklist = msg.data.checklist.map(item => {
@@ -510,31 +1043,11 @@ Could you please clarify your request, or select one of the quick actions below?
     }
   };
 
-  // Route recommendations fetch helper
-  const handleFetchRouteOptions = async (id, cargoIdStr) => {
-    setIsTyping(true);
-    try {
-      const res = await api.get(`/ai-operations/route-options/${id}`);
-      const routeData = res.data.data || null;
-      addBotMessage(`Route recommendations for **${cargoIdStr}** 🗺️:`, 'route_options', {
-        cargoId: id,
-        cargoRef: cargoIdStr,
-        selected_route: routeData?.selected_route || '',
-        routes: routeData ? JSON.parse(routeData.routes_json) : []
-      });
-    } catch (err) {
-      addBotMessage('⚠️ Failed to fetch route recommendations.');
-    } finally {
-      setIsTyping(false);
-    }
-  };
-
   const handleSelectRouteInChat = async (messageId, cargoId, route) => {
     try {
       await api.post('/ai-operations/route-options/select', { cargo_id: cargoId, selected_route: route });
       success('Route option selected!');
 
-      // Update message selection status in bubble
       setMessages(prev => prev.map(msg => {
         if (msg.id === messageId && msg.type === 'route_options') {
           return { ...msg, data: { ...msg.data, selected_route: route } };
@@ -546,18 +1059,15 @@ Could you please clarify your request, or select one of the quick actions below?
     }
   };
 
-  // Direct approval for quotation
   const handleApproveQuoteInChat = async (messageId, quoteIdStr) => {
     try {
-      // Find database primary ID for this quote
       const quoteObj = quotes.find(q => q.quote_id === quoteIdStr);
       if (!quoteObj) return;
 
       await api.post(`/ai-operations/quotations/approve/${quoteObj.id}`);
       success('Quotation approved!');
-      fetchLogs(); // refresh sidebar list
+      fetchLogs();
       
-      // Update UI bubble
       setMessages(prev => prev.map(msg => {
         if (msg.id === messageId && msg.type === 'quotation_result') {
           return { ...msg, data: { ...msg.data, status: 'Approved' } };
@@ -569,7 +1079,7 @@ Could you please clarify your request, or select one of the quick actions below?
     }
   };
 
-  // Direct approval for claim
+  // Sidebar controls
   const handleApproveClaimInSidebar = async (id) => {
     try {
       await api.post(`/ai-operations/claims/approve/${id}`);
@@ -580,7 +1090,6 @@ Could you please clarify your request, or select one of the quick actions below?
     }
   };
 
-  // Direct resolve for complaint
   const handleResolveComplaintInSidebar = async (id) => {
     try {
       await api.post(`/ai-operations/complaints/resolve/${id}`);
@@ -602,7 +1111,7 @@ Could you please clarify your request, or select one of the quick actions below?
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sans">
       <ToastContainer toasts={toasts} removeToast={removeToast} />
 
       {/* Header */}
@@ -611,7 +1120,7 @@ Could you please clarify your request, or select one of the quick actions below?
           <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
             <MdIcons.MdSmartToy className="text-blue-600 text-3xl" /> AI Operations Control
           </h2>
-          <p className="text-slate-500 text-sm">Automate quotes, optimize routes, verify documents, and calculate claims with conversational AI</p>
+          <p className="text-slate-500 text-sm">Conversational AI chatbot that loads operational forms directly into your message feed</p>
         </div>
         <button
           onClick={fetchLogs}
@@ -628,7 +1137,7 @@ Could you please clarify your request, or select one of the quick actions below?
         <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl shadow-xl flex flex-col h-[650px] overflow-hidden relative">
           
           {/* Chat Top Header */}
-          <div className="bg-slate-950 px-6 py-4 border-b border-slate-850 flex justify-between items-center z-10">
+          <div className="bg-slate-950 px-6 py-4 border-b border-slate-850 flex justify-between items-center z-10 select-none">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/20">
                 <MdIcons.MdSmartToy className="text-2xl animate-pulse" />
@@ -642,14 +1151,21 @@ Could you please clarify your request, or select one of the quick actions below?
               </div>
             </div>
             
-            {chatState && (
-              <button
-                onClick={handleAbort}
-                className="flex items-center gap-1 text-xs bg-red-950 text-red-400 border border-red-900 hover:bg-red-900 hover:text-white px-3 py-1.5 rounded-xl transition-all"
-              >
-                <MdIcons.MdClose /> Cancel Flow
-              </button>
-            )}
+            <button
+              onClick={() => {
+                setMessages([
+                  {
+                    id: 'welcome-reset',
+                    sender: 'bot',
+                    text: '👋 AI Chat thread reset! Choose an action below or ask a question:',
+                    timestamp: new Date()
+                  }
+                ]);
+              }}
+              className="text-xs text-slate-400 hover:text-white px-3 py-1.5 border border-slate-800 hover:bg-slate-800 rounded-xl transition-all"
+            >
+              Clear Thread
+            </button>
           </div>
 
           {/* Chat Messages Feed */}
@@ -671,15 +1187,40 @@ Could you please clarify your request, or select one of the quick actions below?
                   </div>
 
                   {/* Bubble content */}
-                  <div className="space-y-2">
-                    <div className={`p-4 rounded-2xl text-sm leading-relaxed shadow-sm font-sans whitespace-pre-wrap ${
+                  <div className="space-y-2 w-full">
+                    <div className={`p-4 rounded-2xl text-sm leading-relaxed shadow-sm whitespace-pre-wrap ${
                       isBot 
                         ? 'bg-slate-850 text-slate-200 rounded-tl-sm border border-slate-800/80' 
-                        : 'bg-blue-600 text-white rounded-tr-sm'
+                        : 'bg-blue-600 text-white rounded-tr-sm w-fit ml-auto'
                     }`}>
                       {msg.text}
 
-                      {/* CUSTOM RENDER: RATE COMPARISON */}
+                      {/* INLINE FORMS */}
+                      {msg.type === 'form_quote' && (
+                        <InChatQuoteForm onSubmit={handleQuoteFormSubmit} />
+                      )}
+                      
+                      {msg.type === 'form_claim' && (
+                        <InChatClaimForm onSubmit={handleClaimFormSubmit} cargoList={cargoList} />
+                      )}
+
+                      {msg.type === 'form_complaint' && (
+                        <InChatComplaintForm onSubmit={handleComplaintFormSubmit} />
+                      )}
+
+                      {msg.type === 'form_cleaner' && (
+                        <InChatCleanerForm onSubmit={handleCleanerFormSubmit} />
+                      )}
+
+                      {msg.type === 'form_customs' && (
+                        <InChatCustomsForm onSubmit={handleCustomsFormSubmit} cargoList={cargoList} />
+                      )}
+
+                      {msg.type === 'form_routes' && (
+                        <InChatRouteSelectForm onSubmit={handleRouteSelectFormSubmit} cargoList={cargoList} />
+                      )}
+
+                      {/* OUTPUT CARD RENDERS */}
                       {msg.type === 'rates' && msg.data && (
                         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {msg.data.map(rate => (
@@ -697,7 +1238,6 @@ Could you please clarify your request, or select one of the quick actions below?
                         </div>
                       )}
 
-                      {/* CUSTOM RENDER: SYSTEM INSIGHTS */}
                       {msg.type === 'insights' && msg.data && (
                         <div className="mt-4 space-y-3">
                           <div className="grid grid-cols-2 gap-2">
@@ -719,20 +1259,21 @@ Could you please clarify your request, or select one of the quick actions below?
                         </div>
                       )}
 
-                      {/* CUSTOM RENDER: GENERATED QUOTE */}
                       {msg.type === 'quotation_result' && msg.data && (
-                        <div className="mt-4 bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3 font-sans">
+                        <div className="mt-4 bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3">
                           <div className="flex justify-between items-center border-b border-slate-800 pb-2">
                             <span className="font-mono text-xs font-bold text-blue-400">{msg.data.quote_id}</span>
-                            <span className="text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full uppercase">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              msg.data.status === 'Approved' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                            }`}>
                               {msg.data.status || 'Pending'}
                             </span>
                           </div>
                           <div className="grid grid-cols-2 gap-2 text-xs">
-                            <div className="text-slate-400">Customer: <strong className="text-white block">{msg.data.customer_name}</strong></div>
-                            <div className="text-slate-400">Cargo Type: <strong className="text-white block">{msg.data.cargo_type} ({msg.data.weight} kg)</strong></div>
-                            <div className="text-slate-400 mt-2">Flight Path: <strong className="text-white block">{msg.data.origin} ➔ {msg.data.destination}</strong></div>
-                            <div className="text-slate-400 mt-2">Estimated Rate: <strong className="text-white block">{msg.data.rate_per_kg} AED/kg (+{msg.data.extra_charges} AED)</strong></div>
+                            <div className="text-slate-400 font-medium">Customer: <strong className="text-white block font-semibold mt-0.5">{msg.data.customer_name}</strong></div>
+                            <div className="text-slate-400 font-medium">Cargo: <strong className="text-white block font-semibold mt-0.5">{msg.data.cargo_type} ({msg.data.weight} kg)</strong></div>
+                            <div className="text-slate-400 font-medium mt-2">Flight Path: <strong className="text-white block font-semibold mt-0.5">{msg.data.origin} ➔ {msg.data.destination}</strong></div>
+                            <div className="text-slate-400 font-medium mt-2">Estimated Rate: <strong className="text-white block font-semibold mt-0.5">{msg.data.rate_per_kg} AED/kg (+{msg.data.extra_charges} AED)</strong></div>
                           </div>
                           <div className="flex justify-between items-center border-t border-slate-800 pt-3 mt-2">
                             <div>
@@ -742,7 +1283,7 @@ Could you please clarify your request, or select one of the quick actions below?
                             {(!msg.data.status || msg.data.status === 'Pending') && (
                               <button
                                 onClick={() => handleApproveQuoteInChat(msg.id, msg.data.quote_id)}
-                                className="bg-green-600 hover:bg-green-700 text-white font-bold text-[10px] px-3.5 py-1.5 rounded-lg transition-colors shadow-sm uppercase tracking-wider"
+                                className="bg-green-650 hover:bg-green-700 text-white font-bold text-[10px] px-3.5 py-1.5 rounded-lg transition-colors shadow-sm uppercase tracking-wider"
                               >
                                 Approve Rate
                               </button>
@@ -751,13 +1292,12 @@ Could you please clarify your request, or select one of the quick actions below?
                         </div>
                       )}
 
-                      {/* CUSTOM RENDER: CUSTOMS CHECKLIST */}
                       {msg.type === 'customs_checklist' && msg.data && (
-                        <div className="mt-4 space-y-3 font-sans">
-                          <div className="bg-slate-900 border border-slate-800 p-3 rounded-xl space-y-1.5">
-                            <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider block">AI Custom Guidelines:</span>
-                            <p className="text-xs text-slate-300 leading-relaxed">
-                              Air cargo regulations for <strong>{msg.data.cargoType}</strong> require validating compliance documents.
+                        <div className="mt-4 space-y-3">
+                          <div className="bg-slate-900 border border-slate-800 p-3 rounded-xl text-xs">
+                            <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider block mb-1">AI Guidelines:</span>
+                            <p className="text-slate-300 leading-relaxed">
+                              Air cargo regulations for <strong>{msg.data.cargoType}</strong> require verifying these checklist documents.
                             </p>
                           </div>
                           <div className="space-y-2">
@@ -765,12 +1305,12 @@ Could you please clarify your request, or select one of the quick actions below?
                               <div key={item.id} className="flex justify-between items-center p-3 bg-slate-900/70 border border-slate-800 rounded-xl">
                                 <div>
                                   <span className="text-xs font-semibold text-white block">{item.document_type}</span>
-                                  <span className="text-[9px] text-slate-500 mt-0.5 block">
-                                    {item.status === 'Verified' ? `Approved by ${item.verified_by}` : 'Pending validation'}
+                                  <span className="text-[9px] text-slate-500 mt-0.5 block font-mono">
+                                    {item.status === 'Verified' ? `Verified by ${item.verified_by}` : 'Awaiting confirmation'}
                                   </span>
                                 </div>
                                 {item.status === 'Verified' ? (
-                                  <span className="text-[10px] font-bold text-green-500 flex items-center gap-0.5">
+                                  <span className="text-[10px] font-bold text-green-500 flex items-center gap-0.5 select-none">
                                     <MdIcons.MdCheckCircle /> Verified
                                   </span>
                                 ) : (
@@ -787,9 +1327,8 @@ Could you please clarify your request, or select one of the quick actions below?
                         </div>
                       )}
 
-                      {/* CUSTOM RENDER: ROUTE RECOMMENDATIONS */}
                       {msg.type === 'route_options' && msg.data && (
-                        <div className="mt-4 space-y-3 font-sans">
+                        <div className="mt-4 space-y-3">
                           <div className="bg-slate-900 border border-slate-800 p-3 rounded-xl text-xs text-slate-400">
                             Current flight path: <strong className="text-blue-400">{msg.data.selected_route || 'None'}</strong>
                           </div>
@@ -814,16 +1353,14 @@ Could you please clarify your request, or select one of the quick actions below?
                         </div>
                       )}
 
-                      {/* CUSTOM RENDER: TEXT CLEANER OUTPUT */}
                       {msg.type === 'cleaner_result' && msg.data && (
                         <div className="mt-4">
-                          <pre className="bg-slate-900 border border-slate-800 text-[10px] font-mono px-3 py-2.5 rounded-xl text-green-400 overflow-x-auto">
+                          <pre className="bg-slate-900 border border-slate-800 text-[10px] font-mono px-3 py-2.5 rounded-xl text-green-400 overflow-x-auto select-all">
                             {msg.data}
                           </pre>
                         </div>
                       )}
 
-                      {/* CUSTOM RENDER: DAMAGE CLAIM CONFIRM */}
                       {msg.type === 'claim_result' && msg.data && (
                         <div className="mt-4 bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-2">
                           <div className="flex justify-between items-center border-b border-slate-850 pb-2 mb-2 text-xs">
@@ -831,30 +1368,29 @@ Could you please clarify your request, or select one of the quick actions below?
                             <span className="text-[9px] bg-slate-850 text-slate-400 px-2 py-0.5 rounded uppercase">Submitted</span>
                           </div>
                           <div className="text-xs space-y-1.5">
-                            <p className="text-slate-400">Cargo ID: <strong className="text-white">{msg.data.cargo_ref}</strong></p>
-                            <p className="text-slate-400">Amount: <strong className="text-white">{msg.data.amount} AED</strong></p>
-                            <p className="text-slate-400">Description: <strong className="text-white block italic text-[11px] mt-0.5">"{msg.data.description}"</strong></p>
+                            <p className="text-slate-400 font-medium">Cargo ID: <strong className="text-white font-semibold">{msg.data.cargo_ref}</strong></p>
+                            <p className="text-slate-400 font-medium">Amount: <strong className="text-white font-semibold">{msg.data.amount} AED</strong></p>
+                            <p className="text-slate-400 font-medium">Details: <strong className="text-white font-semibold block italic text-[11px] mt-0.5">"{msg.data.description}"</strong></p>
                           </div>
                         </div>
                       )}
 
-                      {/* CUSTOM RENDER: COMPLAINT REGISTER CONFIRM */}
                       {msg.type === 'complaint_result' && msg.data && (
                         <div className="mt-4 bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-2">
                           <div className="flex justify-between items-center border-b border-slate-850 pb-2 mb-2 text-xs">
                             <span className="font-mono text-blue-400 font-bold">{msg.data.complaint_id}</span>
-                            <span className="text-[9px] bg-red-950 text-red-400 border border-red-900/30 px-2 py-0.5 rounded uppercase">Open</span>
+                            <span className="text-[9px] bg-red-950 text-red-400 border border-red-900/30 px-2 py-0.5 rounded uppercase font-semibold">Open</span>
                           </div>
                           <div className="text-xs space-y-1.5">
-                            <p className="text-slate-400">Customer: <strong className="text-white">{msg.data.customer_name}</strong></p>
-                            <p className="text-slate-400">Subject: <strong className="text-white">{msg.data.subject}</strong></p>
-                            <p className="text-slate-400">Description: <strong className="text-white block italic text-[11px] mt-0.5">"{msg.data.description}"</strong></p>
+                            <p className="text-slate-400 font-medium">Customer: <strong className="text-white font-semibold">{msg.data.customer_name}</strong></p>
+                            <p className="text-slate-400 font-medium">Subject: <strong className="text-white font-semibold">{msg.data.subject}</strong></p>
+                            <p className="text-slate-400 font-medium">Details: <strong className="text-white font-semibold block italic text-[11px] mt-0.5">"{msg.data.description}"</strong></p>
                           </div>
                         </div>
                       )}
 
                     </div>
-                    <span className="text-[9px] text-slate-500 font-mono block pl-1">
+                    <span className={`text-[9px] text-slate-500 font-mono block pl-1 ${!isBot && 'text-right pr-1'}`}>
                       {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
@@ -880,105 +1416,56 @@ Could you please clarify your request, or select one of the quick actions below?
           </div>
 
           {/* Quick Actions Panel */}
-          <div className="bg-slate-950 px-4 py-2.5 border-t border-slate-850 z-10">
-            <div className="flex gap-2 overflow-x-auto py-1 scrollbar-none select-none">
-              {chatState?.type === 'customs' && chatState?.step === 'select_cargo' ? (
-                // Show cargo options inline
-                cargoList.slice(0, 8).map(cargo => (
-                  <button
-                    key={cargo.id}
-                    onClick={() => processGuidedFlow(cargo.cargo_id)}
-                    className="flex-shrink-0 bg-blue-900/40 text-blue-300 hover:bg-blue-600 hover:text-white border border-blue-900 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
-                  >
-                    📦 {cargo.cargo_id}
-                  </button>
-                ))
-              ) : chatState?.type === 'routes' && chatState?.step === 'select_cargo' ? (
-                // Show cargo options for routing
-                cargoList.slice(0, 8).map(cargo => (
-                  <button
-                    key={cargo.id}
-                    onClick={() => processGuidedFlow(cargo.cargo_id)}
-                    className="flex-shrink-0 bg-blue-900/40 text-blue-300 hover:bg-blue-600 hover:text-white border border-blue-900 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
-                  >
-                    📦 {cargo.cargo_id}
-                  </button>
-                ))
-              ) : chatState?.type === 'claim' && chatState?.step === 'cargo' ? (
-                // Show cargo options for claims
-                cargoList.slice(0, 8).map(cargo => (
-                  <button
-                    key={cargo.id}
-                    onClick={() => processGuidedFlow(cargo.cargo_id)}
-                    className="flex-shrink-0 bg-blue-900/40 text-blue-300 hover:bg-blue-600 hover:text-white border border-blue-900 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
-                  >
-                    📦 {cargo.cargo_id}
-                  </button>
-                ))
-              ) : chatState?.type === 'quote' && chatState?.step === 'type' ? (
-                // Show type options inline
-                ['Electronics', 'Pharmaceuticals', 'Textiles', 'Machinery', 'Perishables', 'Chemicals'].map(t => (
-                  <button
-                    key={t}
-                    onClick={() => processGuidedFlow(t)}
-                    className="flex-shrink-0 bg-blue-900/40 text-blue-300 hover:bg-blue-600 hover:text-white border border-blue-900 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
-                  >
-                    🏷️ {t}
-                  </button>
-                ))
-              ) : (
-                // Standard quick action chips
-                <>
-                  <button
-                    onClick={() => handleActionClick('quote')}
-                    className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all"
-                  >
-                    📋 Generate Quote
-                  </button>
-                  <button
-                    onClick={() => handleActionClick('customs')}
-                    className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all"
-                  >
-                    🛃 Customs Check
-                  </button>
-                  <button
-                    onClick={() => handleActionClick('cleaner')}
-                    className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all"
-                  >
-                    ✨ Clean Description
-                  </button>
-                  <button
-                    onClick={() => handleActionClick('routes')}
-                    className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all"
-                  >
-                    🗺️ Route Recommend
-                  </button>
-                  <button
-                    onClick={() => handleActionClick('claim')}
-                    className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all"
-                  >
-                    🛡️ Submit Claim
-                  </button>
-                  <button
-                    onClick={() => handleActionClick('rates')}
-                    className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all"
-                  >
-                    ✈️ Compare Rates
-                  </button>
-                  <button
-                    onClick={() => handleActionClick('complaint')}
-                    className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all"
-                  >
-                    💬 File Complaint
-                  </button>
-                  <button
-                    onClick={() => handleActionClick('insights')}
-                    className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all"
-                  >
-                    📊 System Insights
-                  </button>
-                </>
-              )}
+          <div className="bg-slate-950 px-4 py-2.5 border-t border-slate-850 z-10 select-none">
+            <div className="flex gap-2 overflow-x-auto py-1 scrollbar-none">
+              <button
+                onClick={() => handleActionClick('quote')}
+                className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all"
+              >
+                📋 Generate Quote
+              </button>
+              <button
+                onClick={() => handleActionClick('customs')}
+                className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all"
+              >
+                🛃 Customs Check
+              </button>
+              <button
+                onClick={() => handleActionClick('cleaner')}
+                className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all"
+              >
+                ✨ Clean Description
+              </button>
+              <button
+                onClick={() => handleActionClick('routes')}
+                className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all"
+              >
+                🗺️ Route Recommend
+              </button>
+              <button
+                onClick={() => handleActionClick('claim')}
+                className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all"
+              >
+                🛡️ Submit Claim
+              </button>
+              <button
+                onClick={() => handleActionClick('rates')}
+                className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all"
+              >
+                ✈️ Compare Rates
+              </button>
+              <button
+                onClick={() => handleActionClick('complaint')}
+                className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all"
+              >
+                💬 File Complaint
+              </button>
+              <button
+                onClick={() => handleActionClick('insights')}
+                className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all"
+              >
+                📊 System Insights
+              </button>
             </div>
           </div>
 
@@ -987,11 +1474,7 @@ Could you please clarify your request, or select one of the quick actions below?
             <form onSubmit={handleUserMessageSubmit} className="flex gap-2">
               <input
                 type="text"
-                placeholder={
-                  chatState 
-                    ? `Guided: Type details for ${chatState.type}...` 
-                    : 'Type a command or ask a question (e.g. "compare rates")...'
-                }
+                placeholder='Type a command (e.g. "insights" or "quote") or select a form chip above...'
                 value={inputVal}
                 onChange={(e) => setInputVal(e.target.value)}
                 className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-sans"
