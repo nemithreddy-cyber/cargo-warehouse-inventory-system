@@ -217,8 +217,17 @@ export default function AddCargoPage() {
         await api.put(`/cargo/${id}`, payload);
         success('Cargo record updated successfully! Redirecting...');
       } else {
-        await api.post('/cargo', payload);
+        const createRes = await api.post('/cargo', payload);
         success('Cargo record added successfully! Redirecting...');
+        // Auto-trigger notification for new cargo received
+        try {
+          const cargoId = createRes.data?.data?.cargo_id || 'N/A';
+          await api.post('/notifications', {
+            title: 'New Cargo Received',
+            message: `Cargo ${cargoId} received from ${payload.customer_name} — Type: ${payload.cargo_type}, Origin: ${payload.origin_airport}, Destination: ${payload.destination_airport}. ${payload.package_count} package(s) weighing ${payload.weight} kg.`,
+            type: 'new_cargo',
+          });
+        } catch { /* notification failure is non-fatal */ }
       }
       setSubmitted(true);
       setTimeout(() => navigate('/cargo'), 2000);

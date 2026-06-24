@@ -9,7 +9,7 @@ export default function ProtectedRoute() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <LoadingSpinner size="lg" text="Loading Cargo Warehouse System..." />
+        <LoadingSpinner size="lg" text="Loading ORBEM Solutions System..." />
       </div>
     );
   }

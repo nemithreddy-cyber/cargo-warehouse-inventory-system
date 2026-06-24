@@ -85,7 +85,7 @@ export default function CargoDetailsPage() {
             console.error('Failed to load related dispatch info', dispErr);
           }
 
-          // Fetch related activity logs by searching for the cargo ID (e.g. CRG-20240001)
+          // Fetch related activity logs by searching for the cargo ID (e.g. CRG-20260001)
           try {
             const logsRes = await api.get('/activity-logs', { params: { search: mappedCargo.id } });
             const dbLogs = logsRes.data.data || [];

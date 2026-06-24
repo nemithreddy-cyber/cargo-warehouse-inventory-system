@@ -1,6 +1,14 @@
-export default function DashboardCard({ title, value, icon: Icon, trend, trendValue, color, bgColor, description }) {
+export default function DashboardCard({ title, value, icon: Icon, trend, trendValue, color, bgColor, description, onClick }) {
+  const isClickable = typeof onClick === 'function';
   return (
-    <div className={`bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 group`}>
+    <div
+      onClick={onClick}
+      className={`bg-white rounded-2xl p-5 border border-slate-100 shadow-sm transition-all duration-300 group ${
+        isClickable
+          ? 'cursor-pointer active:scale-[0.98] hover:shadow-lg hover:border-slate-200 hover:-translate-y-1'
+          : 'hover:shadow-md hover:-translate-y-0.5'
+      }`}
+    >
       <div className="flex items-center justify-between mb-4">
         <div className={`w-12 h-12 rounded-2xl ${bgColor} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
           <Icon className={`text-2xl ${color}`} />

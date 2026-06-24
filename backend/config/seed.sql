@@ -1,106 +1,142 @@
 -- ============================================================
 -- Cargo Warehouse Inventory System — Seed Data
--- Run AFTER schema.sql:  mysql -u root -p cargo_warehouse < seed.sql
 -- ============================================================
 
 USE cargo_warehouse;
 
 -- ============================================================
--- Users (passwords are all "Password@123" hashed with bcrypt)
+-- Users
 -- ============================================================
-INSERT IGNORE INTO users (name, username, email, password, role) VALUES
-  ('Super Admin',            'admin',     'admin@cargowarehouse.com',   '$2a$12$NrymNyzzI2yMDZBQEvfzW.v4nJvDWM9gVq6MbEzVxG8kPv7jqfEgW', 'Super Admin');
+INSERT IGNORE INTO users (id, name, username, email, password, role) VALUES
+  (1, 'Super Admin',            'admin',     'admin@cargowarehouse.com',   '$2a$12$NrymNyzzI2yMDZBQEvfzW.v4nJvDWM9gVq6MbEzVxG8kPv7jqfEgW', 'Super Admin');
 
 -- ============================================================
 -- Warehouse Zones
 -- ============================================================
-INSERT IGNORE INTO warehouse_zones (zone_name, capacity, occupied) VALUES
-  ('Zone A - General Cargo',   100, 42),
-  ('Zone B - Fragile Items',    50, 15),
-  ('Zone C - Cold Storage',     30,  8),
-  ('Zone D - Hazmat',           20,  3),
-  ('Zone E - Oversized',        40, 10);
+INSERT IGNORE INTO warehouse_zones (id, zone_name, capacity, occupied) VALUES
+  (1, 'Zone A - General Cargo',   100, 42),
+  (2, 'Zone B - Fragile Items',    50, 15),
+  (3, 'Zone C - Cold Storage',     30,  8),
+  (4, 'Zone D - Hazmat',           20,  3),
+  (5, 'Zone E - Oversized',        40, 10);
 
 -- ============================================================
--- Storage Locations (Zone A)
+-- Storage Locations
 -- ============================================================
-INSERT IGNORE INTO storage_locations (zone_id, location_code, status) VALUES
-  (1, 'A-001', 'Occupied'),
-  (1, 'A-002', 'Occupied'),
-  (1, 'A-003', 'Available'),
-  (1, 'A-004', 'Available'),
-  (1, 'A-005', 'Reserved'),
-  (2, 'B-001', 'Occupied'),
-  (2, 'B-002', 'Available'),
-  (2, 'B-003', 'Available'),
-  (3, 'C-001', 'Occupied'),
-  (3, 'C-002', 'Available'),
-  (4, 'D-001', 'Occupied'),
-  (4, 'D-002', 'Available'),
-  (5, 'E-001', 'Available'),
-  (5, 'E-002', 'Available');
+INSERT IGNORE INTO storage_locations (id, zone_id, location_code, status) VALUES
+  (1, 1, 'Slot A-01, Bin 01', 'Occupied'),
+  (2, 1, 'Slot A-02, Bin 02', 'Occupied'),
+  (3, 1, 'Slot A-03, Bin 03', 'Occupied'),
+  (4, 1, 'Slot A-04, Bin 04', 'Available'),
+  (5, 1, 'Slot A-05, Bin 05', 'Reserved'),
+  (6, 2, 'Slot B-01, Bin 01', 'Occupied'),
+  (7, 2, 'Slot B-02, Bin 02', 'Available'),
+  (8, 2, 'Slot B-03, Bin 03', 'Available'),
+  (9, 3, 'Slot C-01, Bin 01', 'Occupied'),
+  (10, 3, 'Slot C-02, Bin 02', 'Available'),
+  (11, 4, 'Slot D-01, Bin 01', 'Occupied'),
+  (12, 4, 'Slot D-02, Bin 02', 'Available'),
+  (13, 5, 'Slot E-12, Bin 04', 'Occupied'),
+  (14, 5, 'Slot E-15, Bin 01', 'Occupied');
 
 -- ============================================================
 -- Cargo
 -- ============================================================
 INSERT IGNORE INTO cargo
-  (cargo_id, customer_name, customer_phone, cargo_type, origin_airport, destination_airport,
+  (id, cargo_id, customer_name, customer_phone, cargo_type, origin_airport, destination_airport,
    pickup_city, package_count, weight, length, width, height, chargeable_weight, billing_weight,
    arrival_date, status, zone_id, location_id, created_by)
 VALUES
-  ('CRG-20240001', 'Raj Enterprises',    '+91-9876543210', 'Electronics',    'BOM', 'DEL', 'Mumbai',    3,  45.00, 60.0, 40.0, 30.0, 12.00, 45.00, '2024-06-01', 'Stored',             1, 1, 1),
-  ('CRG-20240002', 'Global Traders',     '+91-9123456780', 'Pharmaceuticals','MAA', 'BLR', 'Chennai',   5,  30.00, 50.0, 35.0, 25.0,  7.29, 30.00, '2024-06-02', 'Stored',             2, 6, 2),
-  ('CRG-20240003', 'Swift Logistics',    '+91-9988776655', 'Textiles',       'DEL', 'HYD', 'Delhi',     2,  18.00, 80.0, 60.0, 40.0, 32.00, 32.00, '2024-06-03', 'Ready For Dispatch', 1, 2, 2),
-  ('CRG-20240004', 'Ocean Freight Co',   '+91-9090909090', 'Machinery',      'CCU', 'BOM', 'Kolkata',   1, 150.00,100.0, 80.0, 70.0, 93.33,150.00, '2024-06-04', 'Dispatched',         5, NULL, 1),
-  ('CRG-20240005', 'Prime Exports',      '+91-9871234560', 'Perishables',    'BLR', 'MAA', 'Bengaluru', 4,  25.00, 40.0, 30.0, 20.0,  4.00, 25.00, '2024-06-05', 'Delivered',          3, 9, 1),
-  ('CRG-20240006', 'Ace Supplies',       '+91-9000011111', 'Chemicals',      'HYD', 'CCU', 'Hyderabad', 2,  55.00, 60.0, 50.0, 40.0, 20.00, 55.00, '2024-06-06', 'Received',           NULL, NULL, 2),
-  ('CRG-20240007', 'Northern Goods',     '+91-9555566666', 'Electronics',    'AMD', 'DEL', 'Ahmedabad', 6,  70.00, 70.0, 50.0, 35.0, 20.42, 70.00, '2024-06-07', 'Stored',             1, NULL, 2),
-  ('CRG-20240008', 'FastTrack Imports',  '+91-9111122222', 'Auto Parts',     'PNQ', 'BOM', 'Pune',      1,  90.00, 90.0, 70.0, 60.0, 63.00, 90.00, '2024-06-08', 'Ready For Dispatch', 5, NULL, 1);
+  (1, 'CRG-20260001', 'Raj Enterprises',    '+91-9876543210', 'Electronics',    'BOM', 'DEL', 'Mumbai',    3,  45.00, 60.0, 40.0, 30.0, 12.00, 45.00, '2026-06-01', 'Stored',             1, 1, 1),
+  (2, 'CRG-20260002', 'Global Traders',     '+91-9123456780', 'Pharmaceuticals','MAA', 'BLR', 'Chennai',   5,  30.00, 50.0, 35.0, 25.0,  7.29, 30.00, '2026-06-02', 'Stored',             2, 6, 1),
+  (3, 'CRG-20260003', 'Swift Logistics',    '+91-9988776655', 'Textiles',       'DEL', 'HYD', 'Delhi',     2,  18.00, 80.0, 60.0, 40.0, 32.00, 32.00, '2026-06-03', 'Ready For Dispatch', 1, 2, 1),
+  (4, 'CRG-20260004', 'Ocean Freight Co',   '+91-9090909090', 'Machinery',      'CCU', 'BOM', 'Kolkata',   1, 150.00,100.0, 80.0, 70.0, 93.33,150.00, '2026-06-04', 'Dispatched',         5, 13, 1),
+  (5, 'CRG-20260005', 'Prime Exports',      '+91-9871234560', 'Perishables',    'BLR', 'MAA', 'Bengaluru', 4,  25.00, 40.0, 30.0, 20.0,  4.00, 25.00, '2026-06-05', 'Delivered',          3, 9, 1),
+  (6, 'CRG-20260006', 'Ace Supplies',       '+91-9000011111', 'Chemicals',      'HYD', 'CCU', 'Hyderabad', 2,  55.00, 60.0, 50.0, 40.0, 20.00, 55.00, '2026-06-06', 'Received',           NULL, NULL, 1),
+  (7, 'CRG-20260007', 'Northern Goods',     '+91-9555566666', 'Electronics',    'AMD', 'DEL', 'Ahmedabad', 6,  70.00, 70.0, 50.0, 35.0, 20.42, 70.00, '2026-06-07', 'Stored',             1, 3, 1),
+  (8, 'CRG-20260008', 'FastTrack Imports',  '+91-9111122222', 'Auto Parts',     'PNQ', 'BOM', 'Pune',      1,  90.00, 90.0, 70.0, 60.0, 63.00, 90.00, '2026-06-08', 'Ready For Dispatch', 5, 14, 1);
 
 -- ============================================================
 -- Dispatch Records
 -- ============================================================
 INSERT IGNORE INTO dispatch_records
-  (dispatch_id, cargo_id, driver_name, vehicle_number, dispatch_date, expected_delivery, status, created_by)
+  (id, dispatch_id, cargo_id, driver_name, vehicle_number, dispatch_date, expected_delivery, status, created_by)
 VALUES
-  ('DSP-20240001', 4, 'Ravi Kumar',   'MH-12-AB-1234', '2024-06-05', '2024-06-08', 'In Transit', 3),
-  ('DSP-20240002', 5, 'Suresh Babu',  'TN-09-CD-5678', '2024-06-06', '2024-06-09', 'Delivered',  3),
-  ('DSP-20240003', 3, 'Deepak Singh', 'DL-01-EF-9012', '2024-06-10', '2024-06-13', 'Scheduled',  3);
+  (1, 'DSP-20260001', 4, 'Ravi Kumar',   'MH-12-AB-1234', '2026-06-05', '2026-06-08', 'In Transit', 1),
+  (2, 'DSP-20260002', 5, 'Suresh Babu',  'TN-09-CD-5678', '2026-06-06', '2026-06-09', 'Delivered',  1),
+  (3, 'DSP-20260003', 3, 'Deepak Singh', 'DL-01-EF-9012', '2026-06-10', '2026-06-13', 'Scheduled',  1);
 
 -- ============================================================
--- Activity Logs
+-- Partner Agents
 -- ============================================================
-INSERT IGNORE INTO activity_logs (user_id, action, description) VALUES
-  (1, 'USER_LOGIN',      'Super Admin logged in'),
-  (2, 'USER_LOGIN',      'Ahmed Al-Rashidi (Warehouse Staff) logged in'),
-  (1, 'CARGO_CREATED',   'Cargo CRG-20240001 created for Raj Enterprises'),
-  (2, 'CARGO_CREATED',   'Cargo CRG-20240002 created for Global Traders'),
-  (2, 'CARGO_UPDATED',   'Cargo CRG-20240003 status updated to Ready For Dispatch'),
-  (3, 'DISPATCH_CREATED','Dispatch DSP-20240001 created for cargo CRG-20240004'),
-  (3, 'DISPATCH_CREATED','Dispatch DSP-20240002 created for cargo CRG-20240005'),
-  (1, 'CARGO_UPDATED',   'Cargo CRG-20240005 status updated to Delivered');
+INSERT IGNORE INTO partner_agents (id, agent_name, location, contact_number, status) VALUES
+  (1, 'Emirates Cargo Agent', 'Dubai',   '+971-4-1111111', 'Active'),
+  (2, 'DHL Aviation Agent',    'Muscat',  '+968-24-222222', 'Active'),
+  (3, 'Gulf Air Cargo Agent',   'Manama',  '+973-17-333333', 'Active');
 
 -- ============================================================
--- Notifications
+-- Airline Rates
 -- ============================================================
-INSERT IGNORE INTO notifications (title, message, type, is_read) VALUES
-  ('New Cargo Received',           'Cargo CRG-20240006 has been received from Ace Supplies.',               'new_cargo',       0),
-  ('Cargo Ready For Dispatch',     'Cargo CRG-20240003 is ready for dispatch. Assign a driver.',            'cargo_ready',     0),
-  ('Cargo Delivered',              'Cargo CRG-20240005 has been successfully delivered.',                   'cargo_delivered', 1),
-  ('Warehouse Capacity Warning',   'Zone A - General Cargo is at 84% capacity. Consider rebalancing.',      'capacity_warning',0),
-  ('Cargo Ready For Dispatch',     'Cargo CRG-20240008 is ready for dispatch. Assign a driver.',            'cargo_ready',     0);
+INSERT IGNORE INTO airline_rates (id, airline_name, origin, destination, rate_per_kg, transit_days) VALUES
+  (1, 'Emirates SkyCargo',     'BOM', 'DEL', 2.50, 1),
+  (2, 'Qatar Airways Cargo',   'MAA', 'BLR', 1.80, 2),
+  (3, 'Gulf Air Cargo',         'DEL', 'HYD', 1.45, 2),
+  (4, 'Air India Cargo',        'BOM', 'DEL', 2.10, 1),
+  (5, 'DHL Aviation',           'HYD', 'CCU', 3.10, 1);
 
 -- ============================================================
--- Tasks (sample tasks assigned across roles)
+-- Quotations
 -- ============================================================
-INSERT IGNORE INTO tasks (title, description, assigned_to, assigned_by, status, priority, due_date, cargo_id) VALUES
-  ('Inspect Zone A Storage Slots',       'Conduct a full inspection of all Zone A storage slots and report damage or availability issues.', 2, 1, 'Pending',     'High',   '2026-06-20', NULL),
-  ('Verify CRG-20240001 Weight Entry',   'Double check the chargeable weight recorded for CRG-20240001 against the physical manifest.',     2, 1, 'In Progress', 'Medium', '2026-06-16', 'CRG-20240001'),
-  ('Prepare June Dispatch Report',       'Compile all June dispatch records into the monthly operations summary report.',                    3, 1, 'Pending',     'High',   '2026-06-25', NULL),
-  ('Coordinate DSP-20240003 Delivery',   'Follow up with the driver and update the delivery status for DSP-20240003.',                      3, 1, 'In Progress', 'Urgent', '2026-06-15', 'CRG-20240008'),
-  ('Draft Cargo Documentation CRG-006',  'Prepare all export documentation and customs clearance forms for CRG-20240006.',                  4, 1, 'Pending',     'High',   '2026-06-18', 'CRG-20240006'),
-  ('Archive May 2026 Shipment Docs',     'Scan, label, and archive all May 2026 shipment documentation to the shared drive.',               4, 1, 'Completed',   'Low',    '2026-06-10', NULL),
-  ('Reconcile June Cargo Billing',       'Match chargeable weight entries against customer invoices for all June cargo.',                    5, 1, 'In Progress', 'High',   '2026-06-22', NULL),
-  ('Process Invoice for Global Traders', 'Generate and send the invoice for CRG-20240002 (Global Traders) pending payment.',                5, 1, 'Pending',     'Medium', '2026-06-19', 'CRG-20240002'),
-  ('Update Zone B Capacity Records',     'Record the new storage capacity numbers for Zone B after the recent restructuring.',              2, 1, 'Completed',   'Low',    '2026-06-12', NULL),
-  ('Audit Activity Logs — June 2026',    'Review and flag any suspicious or unauthorized activity in the system logs for June 2026.',       1, 1, 'Pending',     'Medium', '2026-06-30', NULL);
+INSERT IGNORE INTO quotations (id, quote_id, customer_name, weight, cargo_type, origin, destination, rate_per_kg, extra_charges, total_charge, status) VALUES
+  (1, 'QT-20260001', 'Raj Enterprises',    45.00, 'Electronics',     'BOM', 'DEL', 2.50, 15.00, 127.50, 'Approved'),
+  (2, 'QT-20260002', 'Global Traders',     30.00, 'Pharmaceuticals', 'MAA', 'BLR', 1.80, 10.00, 64.00,  'Pending'),
+  (3, 'QT-20260003', 'Swift Logistics',    18.00, 'Textiles',        'DEL', 'HYD', 1.45,  0.00, 26.10,  'Pending');
+
+-- ============================================================
+-- Airway Bills
+-- ============================================================
+INSERT IGNORE INTO airway_bills (id, awb_number, cargo_id, customer_name, origin, destination, weight, status) VALUES
+  (1, 'AWB-98765432', 1, 'Raj Enterprises', 'BOM', 'DEL', 45.00, 'Generated'),
+  (2, 'AWB-12345678', 2, 'Global Traders',  'MAA', 'BLR', 30.00, 'Generated');
+
+-- ============================================================
+-- Invoices
+-- ============================================================
+INSERT IGNORE INTO invoices (id, invoice_number, cargo_id, customer_name, amount, tax, total, status, due_date) VALUES
+  (1, 'INV-20260001', 1, 'Raj Enterprises', 127.50, 6.38, 133.88, 'Paid',   '2026-06-30'),
+  (2, 'INV-20260002', 2, 'Global Traders',  64.00,  3.20, 67.20,  'Unpaid', '2026-07-15');
+
+-- ============================================================
+-- Payments
+-- ============================================================
+INSERT IGNORE INTO payments (id, transaction_id, invoice_id, amount, payment_method, status) VALUES
+  (1, 'TXN-7890123', 1, 133.88, 'Credit Card', 'Success');
+
+-- ============================================================
+-- Complaints
+-- ============================================================
+INSERT IGNORE INTO complaints (id, complaint_id, customer_name, subject, description, status) VALUES
+  (1, 'COMP-001', 'Global Traders', 'Delay in Storing', 'Cargo was received but not stored for 24 hours in Zone B.', 'Resolved'),
+  (2, 'COMP-002', 'Northern Goods',  'Fragile Handle Warning', 'Missing fragile caution tape on electronics pallet.', 'Open');
+
+-- ============================================================
+-- Claims
+-- ============================================================
+INSERT IGNORE INTO claims (id, claim_id, cargo_id, amount, description, status, document_url) VALUES
+  (1, 'CLM-001', 2, 500.00, 'Water damage to pharmaceutical cartons in Zone B.', 'Approved', 'https://cargo-warehouse.com/docs/claims/clm-001.pdf');
+
+-- ============================================================
+-- Customs Checklists
+-- ============================================================
+INSERT IGNORE INTO customs_checklists (id, cargo_id, document_type, status, verified_by) VALUES
+  (1, 1, 'Commercial Invoice', 'Verified', 'Super Admin'),
+  (2, 1, 'Packing List',        'Verified', 'Super Admin'),
+  (3, 2, 'Certificate of Origin', 'Pending', NULL),
+  (4, 2, 'Phytosanitary Cert',   'Pending', NULL);
+
+-- ============================================================
+-- Route Options
+-- ============================================================
+INSERT IGNORE INTO route_options (id, cargo_id, routes_json, selected_route) VALUES
+  (1, 1, '["Emirates SkyCargo: BOM -> DXB -> DEL (Fastest)", "Air India: BOM -> DEL (Direct, Eco)"]', 'Air India: BOM -> DEL (Direct, Eco)'),
+  (2, 2, '["Qatar Cargo: MAA -> DOH -> BLR (Fastest)", "SpiceJet: MAA -> BLR (Direct, Eco)"]', 'SpiceJet: MAA -> BLR (Direct, Eco)');

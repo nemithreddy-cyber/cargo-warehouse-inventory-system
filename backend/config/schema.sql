@@ -121,54 +121,162 @@ CREATE TABLE IF NOT EXISTS dispatch_records (
 ) ENGINE=InnoDB;
 
 -- ============================================================
--- 6. Activity Logs
+-- 6. Partner Agents
 -- ============================================================
-CREATE TABLE IF NOT EXISTS activity_logs (
-  id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  user_id     INT UNSIGNED   NULL,
-  action      VARCHAR(100)   NOT NULL,
-  description TEXT           NULL,
-  created_at  TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_al_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL
+CREATE TABLE IF NOT EXISTS partner_agents (
+  id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  agent_name     VARCHAR(120)  NOT NULL,
+  location       VARCHAR(100)  NOT NULL,
+  contact_number VARCHAR(50)   NOT NULL,
+  status         ENUM('Active', 'Inactive') NOT NULL DEFAULT 'Active',
+  created_at     TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
 -- ============================================================
--- 7. Notifications
+-- 7. Airline Rates
 -- ============================================================
-CREATE TABLE IF NOT EXISTS notifications (
-  id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  title       VARCHAR(200)   NOT NULL,
-  message     TEXT           NOT NULL,
-  type        ENUM(
-                'new_cargo',
-                'cargo_ready',
-                'dispatch_delayed',
-                'capacity_warning',
-                'cargo_delivered',
-                'task_assigned',
-                'task_completed'
-              ) NOT NULL DEFAULT 'new_cargo',
-  is_read     TINYINT(1)     NOT NULL DEFAULT 0,
-  created_at  TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP
+CREATE TABLE IF NOT EXISTS airline_rates (
+  id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  airline_name   VARCHAR(120)  NOT NULL,
+  origin         VARCHAR(10)   NOT NULL,
+  destination    VARCHAR(10)   NOT NULL,
+  rate_per_kg    DECIMAL(10,2) NOT NULL,
+  transit_days   INT UNSIGNED  NOT NULL DEFAULT 2,
+  created_at     TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
 -- ============================================================
--- 8. Tasks
+-- 8. Quotations
 -- ============================================================
-CREATE TABLE IF NOT EXISTS tasks (
-  id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  title        VARCHAR(200)  NOT NULL,
-  description  TEXT          NULL,
-  assigned_to  INT UNSIGNED  NULL,
-  assigned_by  INT UNSIGNED  NULL,
-  status       ENUM('Pending','In Progress','Completed') NOT NULL DEFAULT 'Pending',
-  priority     ENUM('Low','Medium','High','Urgent') NOT NULL DEFAULT 'Medium',
-  due_date     DATE          NULL,
-  cargo_id     VARCHAR(30)   NULL,
-  created_at   TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at   TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  CONSTRAINT fk_task_assignee FOREIGN KEY (assigned_to) REFERENCES users (id) ON DELETE SET NULL,
-  CONSTRAINT fk_task_assigner FOREIGN KEY (assigned_by) REFERENCES users (id) ON DELETE SET NULL
+CREATE TABLE IF NOT EXISTS quotations (
+  id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  quote_id       VARCHAR(30)    NOT NULL UNIQUE,
+  customer_name  VARCHAR(120)   NOT NULL,
+  weight         DECIMAL(10,2)  NOT NULL,
+  cargo_type     VARCHAR(80)    NOT NULL,
+  origin         VARCHAR(10)    NOT NULL,
+  destination    VARCHAR(10)    NOT NULL,
+  rate_per_kg    DECIMAL(10,2)  NOT NULL,
+  extra_charges  DECIMAL(10,2)  NOT NULL DEFAULT 0.00,
+  total_charge   DECIMAL(10,2)  NOT NULL,
+  status         ENUM('Approved', 'Pending', 'Rejected') NOT NULL DEFAULT 'Pending',
+  created_at     TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- ============================================================
+-- 9. Airway Bills
+-- ============================================================
+CREATE TABLE IF NOT EXISTS airway_bills (
+  id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  awb_number     VARCHAR(30)   NOT NULL UNIQUE,
+  cargo_id       INT UNSIGNED  NOT NULL,
+  customer_name  VARCHAR(120)  NOT NULL,
+  origin         VARCHAR(10)   NOT NULL,
+  destination    VARCHAR(10)   NOT NULL,
+  weight         DECIMAL(10,2) NOT NULL,
+  status         VARCHAR(50)   NOT NULL DEFAULT 'Generated',
+  created_at     TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_awb_cargo FOREIGN KEY (cargo_id) REFERENCES cargo (id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ============================================================
+-- 10. Invoices
+-- ============================================================
+CREATE TABLE IF NOT EXISTS invoices (
+  id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  invoice_number VARCHAR(30)   NOT NULL UNIQUE,
+  cargo_id       INT UNSIGNED  NOT NULL,
+  customer_name  VARCHAR(120)  NOT NULL,
+  amount         DECIMAL(10,2) NOT NULL,
+  tax            DECIMAL(10,2) NOT NULL,
+  total          DECIMAL(10,2) NOT NULL,
+  status         ENUM('Paid', 'Unpaid', 'Overdue') NOT NULL DEFAULT 'Unpaid',
+  due_date       DATE          NOT NULL,
+  created_at     TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_inv_cargo FOREIGN KEY (cargo_id) REFERENCES cargo (id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ============================================================
+-- 11. Payments
+-- ============================================================
+CREATE TABLE IF NOT EXISTS payments (
+  id               INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  transaction_id   VARCHAR(50)   NOT NULL UNIQUE,
+  invoice_id       INT UNSIGNED  NOT NULL,
+  amount           DECIMAL(10,2) NOT NULL,
+  payment_method   VARCHAR(50)   NOT NULL,
+  status           ENUM('Success', 'Pending', 'Failed') NOT NULL DEFAULT 'Success',
+  transaction_date TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_pay_invoice FOREIGN KEY (invoice_id) REFERENCES invoices (id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ============================================================
+-- 12. Complaints
+-- ============================================================
+CREATE TABLE IF NOT EXISTS complaints (
+  id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  complaint_id   VARCHAR(30)   NOT NULL UNIQUE,
+  customer_name  VARCHAR(120)  NOT NULL,
+  subject        VARCHAR(200)  NOT NULL,
+  description    TEXT          NOT NULL,
+  status         ENUM('Open', 'Resolved') NOT NULL DEFAULT 'Open',
+  created_at     TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- ============================================================
+-- 13. Claims
+-- ============================================================
+CREATE TABLE IF NOT EXISTS claims (
+  id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  claim_id       VARCHAR(30)   NOT NULL UNIQUE,
+  cargo_id       INT UNSIGNED  NOT NULL,
+  amount         DECIMAL(10,2) NOT NULL,
+  description    TEXT          NOT NULL,
+  status         ENUM('Submitted', 'Approved', 'Rejected') NOT NULL DEFAULT 'Submitted',
+  document_url   VARCHAR(255)  NULL,
+  created_at     TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_claim_cargo FOREIGN KEY (cargo_id) REFERENCES cargo (id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ============================================================
+-- 14. Customs Checklists
+-- ============================================================
+CREATE TABLE IF NOT EXISTS customs_checklists (
+  id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  cargo_id       INT UNSIGNED  NOT NULL,
+  document_type  VARCHAR(100)  NOT NULL,
+  status         ENUM('Verified', 'Pending') NOT NULL DEFAULT 'Pending',
+  verified_by    VARCHAR(120)  NULL,
+  updated_at     TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_cc_cargo FOREIGN KEY (cargo_id) REFERENCES cargo (id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ============================================================
+-- 15. Route Options
+-- ============================================================
+CREATE TABLE IF NOT EXISTS route_options (
+  id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  cargo_id       INT UNSIGNED  NOT NULL,
+  routes_json    TEXT          NOT NULL,
+  selected_route VARCHAR(150)  NULL,
+  created_at     TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_ro_cargo FOREIGN KEY (cargo_id) REFERENCES cargo (id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ============================================================
+-- 16. Message Logs
+-- ============================================================
+CREATE TABLE IF NOT EXISTS message_logs (
+  id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  recipient_name VARCHAR(120)  NOT NULL,
+  phone_number   VARCHAR(50)   NULL,
+  email          VARCHAR(180)  NULL,
+  channel        VARCHAR(20)   NOT NULL,
+  message        TEXT          NOT NULL,
+  status         VARCHAR(50)   NOT NULL,
+  sent_at        TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  cargo_id       VARCHAR(50)   NULL,
+  error_message  TEXT          NULL
 ) ENGINE=InnoDB;
 
 -- ============================================================
@@ -178,8 +286,9 @@ CREATE INDEX idx_cargo_status   ON cargo (status);
 CREATE INDEX idx_cargo_zone     ON cargo (zone_id);
 CREATE INDEX idx_cargo_cargo_id ON cargo (cargo_id);
 CREATE INDEX idx_dr_cargo_id    ON dispatch_records (cargo_id);
-CREATE INDEX idx_al_user_id     ON activity_logs (user_id);
-CREATE INDEX idx_al_created_at  ON activity_logs (created_at);
-CREATE INDEX idx_notif_is_read  ON notifications (is_read);
-CREATE INDEX idx_tasks_assigned ON tasks (assigned_to);
-CREATE INDEX idx_tasks_status   ON tasks (status);
+CREATE INDEX idx_awb_cargo_id   ON airway_bills (cargo_id);
+CREATE INDEX idx_inv_cargo_id   ON invoices (cargo_id);
+CREATE INDEX idx_cc_cargo_id    ON customs_checklists (cargo_id);
+CREATE INDEX idx_ml_cargo_id    ON message_logs (cargo_id);
+
+

@@ -50,9 +50,10 @@ const Warehouse = {
   },
 
   findAllLocations: async (zone_id = null) => {
-    let query = `SELECT sl.*, wz.zone_name
+    let query = `SELECT sl.*, wz.zone_name, c.cargo_id
                  FROM storage_locations sl
-                 JOIN warehouse_zones wz ON sl.zone_id = wz.id`;
+                 JOIN warehouse_zones wz ON sl.zone_id = wz.id
+                 LEFT JOIN cargo c ON c.location_id = sl.id AND c.status IN ('Received', 'Stored', 'Ready For Dispatch')`;
     const params = [];
     if (zone_id) {
       query += ' WHERE sl.zone_id = ?';

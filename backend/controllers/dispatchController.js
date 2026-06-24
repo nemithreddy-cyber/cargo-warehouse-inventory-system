@@ -5,7 +5,7 @@ const getDispatchList = async (req, res, next) => {
   try {
     const { page, limit, status } = req.query;
     const result = await dispatchService.listDispatch({ page, limit, status });
-    success(res, result, 'Dispatch list retrieved successfully');
+    success(res, { dispatches: result.data, pagination: result.pagination }, 'Dispatch list retrieved successfully');
   } catch (err) {
     next(err);
   }

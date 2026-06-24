@@ -49,13 +49,25 @@ const createDispatch = async (data, userId) => {
   // Update cargo status to Dispatched
   await Cargo.update(data.cargo_id, { status: 'Dispatched' });
 
+  const dispatchRecord = await Dispatch.findById(id);
+
+  // Trigger automatic WhatsApp/Email notifications
+  try {
+    const notificationService = require('./notificationService');
+    if (dispatchRecord && cargo) {
+      notificationService.handleCargoDispatched(dispatchRecord, cargo).catch(err => console.error('Dispatch notification trigger error:', err.message));
+    }
+  } catch (notificationErr) {
+    console.error('Failed to import notification service:', notificationErr.message);
+  }
+
   await ActivityLog.create({
     user_id: userId,
     action: 'DISPATCH_CREATED',
     description: `Dispatch ${dispatch_id} created for cargo ${cargo.cargo_id}`,
   });
 
-  return Dispatch.findById(id);
+  return dispatchRecord;
 };
 
 const updateDispatch = async (id, data, userId) => {

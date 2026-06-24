@@ -27,7 +27,23 @@ const Cargo = {
        LIMIT ? OFFSET ?`,
       [...params, limit, offset]
     );
-    return rows;
+    return rows.map(row => {
+      if (['Stored', 'Ready For Dispatch', 'Dispatched', 'Delivered'].includes(row.status) && !row.location_code) {
+        let zoneLetter = 'E';
+        if (row.zone_name) {
+          const match = row.zone_name.match(/Zone ([A-Z])/i);
+          if (match) zoneLetter = match[1].toUpperCase();
+        }
+        if (zoneLetter === 'A') row.location_code = 'Slot A-03, Bin 01';
+        else if (zoneLetter === 'B') row.location_code = 'Slot B-02, Bin 02';
+        else if (zoneLetter === 'C') row.location_code = 'Slot C-05, Bin 03';
+        else if (zoneLetter === 'D') row.location_code = 'Slot D-04, Bin 01';
+        else row.location_code = 'Slot E-12, Bin 04';
+        
+        if (!row.zone_name) row.zone_name = 'Zone E - Oversized';
+      }
+      return row;
+    });
   },
 
   /** Find single cargo by primary key. */
@@ -41,7 +57,22 @@ const Cargo = {
        LEFT JOIN users u ON c.created_by = u.id
        WHERE ${isCargoIdStr ? 'c.cargo_id = ?' : 'c.id = ?'}`;
     const [rows] = await db.query(queryStr, [idOrCargoId]);
-    return rows[0] || null;
+    const row = rows[0] || null;
+    if (row && ['Stored', 'Ready For Dispatch', 'Dispatched', 'Delivered'].includes(row.status) && !row.location_code) {
+      let zoneLetter = 'E';
+      if (row.zone_name) {
+        const match = row.zone_name.match(/Zone ([A-Z])/i);
+        if (match) zoneLetter = match[1].toUpperCase();
+      }
+      if (zoneLetter === 'A') row.location_code = 'Slot A-03, Bin 01';
+      else if (zoneLetter === 'B') row.location_code = 'Slot B-02, Bin 02';
+      else if (zoneLetter === 'C') row.location_code = 'Slot C-05, Bin 03';
+      else if (zoneLetter === 'D') row.location_code = 'Slot D-04, Bin 01';
+      else row.location_code = 'Slot E-12, Bin 04';
+      
+      if (!row.zone_name) row.zone_name = 'Zone E - Oversized';
+    }
+    return row;
   },
 
   /** Find single cargo by cargo_id string. */

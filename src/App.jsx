@@ -18,11 +18,8 @@ import CargoDetailsPage from './pages/CargoDetailsPage';
 import WarehouseManagementPage from './pages/WarehouseManagementPage';
 import DispatchManagementPage from './pages/DispatchManagementPage';
 import ReportsPage from './pages/ReportsPage';
-import ActivityLogsPage from './pages/ActivityLogsPage';
-import ProfilePage from './pages/ProfilePage';
-import NotificationsPage from './pages/NotificationsPage';
-import TasksPage from './pages/TasksPage';
-import UserManagementPage from './pages/UserManagementPage';
+import AIOperationsPage from './pages/AIOperationsPage';
+import MessagingSimulatorPage from './pages/MessagingSimulatorPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
 
 export default function App() {
@@ -42,12 +39,13 @@ export default function App() {
                 {/* Protected routes */}
                 <Route element={<ProtectedRoute />}>
                   <Route path="/dashboard" element={<DashboardPage />} />
-                  <Route path="/notifications" element={<NotificationsPage />} />
-                  <Route path="/profile" element={<ProfilePage />} />
                   <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
-                  {/* Tasks — all roles */}
-                  <Route path="/tasks" element={<TasksPage />} />
+                  {/* AI Operations — all roles */}
+                  <Route path="/ai-operations" element={<AIOperationsPage />} />
+
+                  {/* Messaging Center — all roles */}
+                  <Route path="/messaging" element={<MessagingSimulatorPage />} />
 
                   {/* Cargo — Warehouse, Operations, Super Admin */}
                   <Route path="/cargo" element={
@@ -91,22 +89,6 @@ export default function App() {
                     <RoleRoute
                       allowedRoles={[ROLES.SUPER_ADMIN, ROLES.OPERATIONS_STAFF, ROLES.DOCUMENTATION_EXEC, ROLES.ACCOUNTS_STAFF]}
                       element={<ReportsPage />}
-                    />
-                  } />
-
-                  {/* Activity Logs — Super Admin only */}
-                  <Route path="/activity-logs" element={
-                    <RoleRoute
-                      allowedRoles={[ROLES.SUPER_ADMIN]}
-                      element={<ActivityLogsPage />}
-                    />
-                  } />
-
-                  {/* User Management — Super Admin only */}
-                  <Route path="/users" element={
-                    <RoleRoute
-                      allowedRoles={[ROLES.SUPER_ADMIN]}
-                      element={<UserManagementPage />}
                     />
                   } />
                 </Route>

@@ -83,6 +83,16 @@ const createCargo = async (data, userId) => {
 
   const cargo = await Cargo.findById(id);
 
+  // Trigger automatic WhatsApp/Email notifications
+  try {
+    const notificationService = require('./notificationService');
+    if (cargo && (cargo.status === 'Received' || cargo.status === 'Stored')) {
+      notificationService.handleCargoReceived(cargo).catch(err => console.error('Cargo received notification trigger error:', err.message));
+    }
+  } catch (notificationErr) {
+    console.error('Failed to import notification service:', notificationErr.message);
+  }
+
   // Activity log
   await ActivityLog.create({
     user_id: userId,

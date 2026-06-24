@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MdEmail, MdLock, MdVisibility, MdVisibilityOff } from 'react-icons/md';
-import { FaPlaneArrival } from 'react-icons/fa';
+import OrbemLogo from '../components/OrbemLogo';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginPage() {
@@ -39,11 +39,11 @@ export default function LoginPage() {
         <div className="bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden">
           {/* Top Banner */}
           <div className="bg-gradient-to-r from-blue-600 to-blue-800 px-8 py-8 text-center">
-            <div className="w-16 h-16 bg-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-              <FaPlaneArrival className="text-white text-3xl" />
+            <div className="w-16 h-16 bg-slate-900/50 border border-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <OrbemLogo className="w-10 h-10 text-white" />
             </div>
-            <h1 className="text-white text-2xl font-bold mb-1">Cargo Warehouse</h1>
-            <p className="text-blue-200 text-sm">Inventory Management System</p>
+            <h1 className="text-white text-xl font-bold mb-1 leading-tight">ORBEM Solutions</h1>
+            <p className="text-blue-200 text-sm font-medium">Warehouse Inventory System</p>
           </div>
 
           {/* Form */}
@@ -119,7 +119,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-blue-400 text-xs text-center mt-6">
-          © 2026 Cargo Warehouse Inventory System. All rights reserved.
+          © 2026 ORBEM Solutions Private Limited Company. All rights reserved.
         </p>
       </div>
     </div>

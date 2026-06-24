@@ -47,7 +47,7 @@ const paginatedResponse = (data, total, page, limit) => ({
 });
 
 /**
- * Auto-generate a prefixed ID like CRG-20240001
+ * Auto-generate a prefixed ID like CRG-20260001
  * @param {string} prefix   - e.g. 'CRG' or 'DSP'
  * @param {number} sequence - Integer sequence number
  */

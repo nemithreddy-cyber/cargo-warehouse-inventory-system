@@ -9,10 +9,10 @@ const cargoRoutes = require('./routes/cargo');
 const warehouseRoutes = require('./routes/warehouse');
 const dispatchRoutes = require('./routes/dispatch');
 const dashboardRoutes = require('./routes/dashboard');
-const activityLogRoutes = require('./routes/activityLogs');
-const notificationRoutes = require('./routes/notifications');
-const taskRoutes = require('./routes/tasks');
 const userRoutes = require('./routes/users');
+const rulesRoutes = require('./routes/rules');
+const aiOperationsRoutes = require('./routes/aiOperations');
+const messageRoutes = require('./routes/messages');
 
 const app = express();
 
@@ -51,10 +51,11 @@ app.use('/api/cargo', cargoRoutes);
 app.use('/api/warehouse', warehouseRoutes);
 app.use('/api/dispatch', dispatchRoutes);
 app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/activity-logs', activityLogRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/tasks', taskRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/rules', rulesRoutes);
+app.use('/api/ai-operations', aiOperationsRoutes);
+app.use('/api/messages', messageRoutes);
+
 
 // Wildcard 404
 app.use('*', (req, res, next) => {

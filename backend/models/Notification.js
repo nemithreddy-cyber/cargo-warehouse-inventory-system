@@ -1,43 +1,25 @@
-const db = require('../config/db');
-
 /**
- * Notification model — thin wrapper around the `notifications` table.
+ * Notification model stub — avoids querying the dropped notifications table.
  */
 const Notification = {
   create: async ({ title, message, type }) => {
-    const [result] = await db.query(
-      'INSERT INTO notifications (title, message, type) VALUES (?, ?, ?)',
-      [title, message, type || 'new_cargo']
-    );
-    return result.insertId;
+    return 1;
   },
 
   findAll: async (limit = 50) => {
-    const [rows] = await db.query(
-      'SELECT * FROM notifications ORDER BY created_at DESC LIMIT ?',
-      [limit]
-    );
-    return rows;
+    return [];
   },
 
   findById: async (id) => {
-    const [rows] = await db.query('SELECT * FROM notifications WHERE id = ?', [id]);
-    return rows[0] || null;
+    return null;
   },
 
   markRead: async (id) => {
-    const [result] = await db.query(
-      'UPDATE notifications SET is_read = 1 WHERE id = ?',
-      [id]
-    );
-    return result.affectedRows;
+    return 0;
   },
 
   countUnread: async () => {
-    const [rows] = await db.query(
-      'SELECT COUNT(*) AS total FROM notifications WHERE is_read = 0'
-    );
-    return rows[0].total;
+    return 0;
   },
 };
 

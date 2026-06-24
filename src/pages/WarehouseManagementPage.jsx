@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MdAdd, MdWarehouse, MdLocationOn } from 'react-icons/md';
+import { MdAdd, MdWarehouse, MdLocationOn, MdAssignment } from 'react-icons/md';
 import StatusBadge from '../components/StatusBadge';
 import Modal from '../components/Modal';
 import ToastContainer from '../components/ToastContainer';
@@ -17,7 +17,10 @@ export default function WarehouseManagementPage() {
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [zoneForm, setZoneForm] = useState({ name: '', description: '', temperature: '', maxCapacity: '' });
   const [locationForm, setLocationForm] = useState({ id: '', zone: '', row: '', column: '', capacity: '' });
-  const { toasts, success, removeToast } = useToast();
+  const [unassignedCargo, setUnassignedCargo] = useState([]);
+  const [selectedCargoToAssign, setSelectedCargoToAssign] = useState('');
+  const [assigningCargo, setAssigningCargo] = useState(false);
+  const { toasts, success, error: toastError, removeToast } = useToast();
 
   const fetchWarehouseData = async () => {
     setLoading(true);
@@ -65,9 +68,51 @@ export default function WarehouseManagementPage() {
     }
   };
 
-  useEffect(() => {
-    fetchWarehouseData();
-  }, []);
+  useEffect(() => { fetchWarehouseData(); }, []);
+
+  // Fetch cargo without a location (for assignment)
+  const fetchUnassignedCargo = async () => {
+    try {
+      const res = await api.get('/cargo', { params: { limit: 100 } });
+      const list = res.data.data || [];
+      const unassigned = list.filter((c) =>
+        ['Received', 'Stored'].includes(c.status) && !c.location_code
+      );
+      setUnassignedCargo(unassigned);
+    } catch { /* non-fatal */ }
+  };
+
+  const handleOpenLocation = (loc) => {
+    setSelectedLocation(loc);
+    setSelectedCargoToAssign('');
+    if (loc.status === 'Available') fetchUnassignedCargo();
+  };
+
+  const handleAssignCargo = async () => {
+    if (!selectedCargoToAssign || !selectedLocation) return;
+    setAssigningCargo(true);
+    try {
+      const cargo = unassignedCargo.find((c) => c.id === parseInt(selectedCargoToAssign, 10));
+      if (!cargo) throw new Error('Cargo not found');
+
+      // Find the zone ID from the location
+      const zone = warehouseZones.find((z) => z.name === selectedLocation.zone);
+
+      await api.put(`/cargo/${cargo.id}`, {
+        location_id: selectedLocation.db_id,
+        zone_id: zone?.id || null,
+        status: 'Stored',
+      });
+
+      success(`Cargo ${cargo.cargo_id} assigned to ${selectedLocation.id} successfully!`);
+      setSelectedLocation(null);
+      fetchWarehouseData();
+    } catch (err) {
+      toastError(err.response?.data?.message || 'Failed to assign cargo to location');
+    } finally {
+      setAssigningCargo(false);
+    }
+  };
 
   const filteredLocations = activeZone === 'All'
     ? storageLocations
@@ -220,7 +265,7 @@ export default function WarehouseManagementPage() {
           {filteredLocations.map((loc) => (
             <div
               key={loc.id}
-              onClick={() => setSelectedLocation(loc)}
+              onClick={() => handleOpenLocation(loc)}
               className={`rounded-xl p-3 cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-md border-2 ${
                 loc.status === 'Occupied' ? 'bg-red-50 border-red-200 hover:border-red-400' :
                 loc.status === 'Maintenance' ? 'bg-amber-50 border-amber-200 hover:border-amber-400' :
@@ -277,7 +322,7 @@ export default function WarehouseManagementPage() {
                 { label: 'Status', value: <StatusBadge status={selectedLocation.status} /> },
                 { label: 'Cargo ID', value: selectedLocation.cargoId || 'Empty' },
                 { label: 'Capacity', value: `${selectedLocation.capacity} kg` },
-                { label: 'Current Load', value: `${selectedLocation.currentLoad} kg` },
+              { label: 'Current Load', value: `${selectedLocation.currentLoad} kg` },
                 { label: 'Utilization', value: selectedLocation.capacity ? `${Math.round((selectedLocation.currentLoad / selectedLocation.capacity) * 100)}%` : '0%' },
               ].map(({ label, value }) => (
                 <div key={label} className="bg-slate-50 rounded-xl p-3">
@@ -286,6 +331,43 @@ export default function WarehouseManagementPage() {
                 </div>
               ))}
             </div>
+            {/* Assign Cargo Section – only for Available locations */}
+            {selectedLocation.status === 'Available' && (
+              <div className="mt-4 pt-4 border-t border-slate-100">
+                <h4 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+                  <MdAssignment className="text-blue-500" /> Assign Cargo to This Location
+                </h4>
+                {unassignedCargo.length === 0 ? (
+                  <p className="text-xs text-slate-500 bg-slate-50 rounded-xl p-3">No unassigned cargo available (Received/Stored without a location).</p>
+                ) : (
+                  <div className="space-y-3">
+                    <select
+                      value={selectedCargoToAssign}
+                      onChange={(e) => setSelectedCargoToAssign(e.target.value)}
+                      className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+                    >
+                      <option value="">Select cargo to assign...</option>
+                      {unassignedCargo.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.cargo_id} — {c.customer_name} ({c.cargo_type})
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={handleAssignCargo}
+                      disabled={!selectedCargoToAssign || assigningCargo}
+                      className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+                    >
+                      {assigningCargo
+                        ? <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                        : <MdAssignment />
+                      }
+                      {assigningCargo ? 'Assigning...' : 'Assign Cargo'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </Modal>

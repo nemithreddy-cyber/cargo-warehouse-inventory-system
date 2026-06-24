@@ -5,8 +5,7 @@
 
 import {
   MdDashboard, MdInventory, MdWarehouse, MdLocalShipping,
-  MdAssessment, MdHistory, MdPerson, MdAdd, MdNotifications,
-  MdAssignment, MdPeople,
+  MdAssessment, MdAdd, MdSmartToy, MdMessage
 } from 'react-icons/md';
 import { FaPlaneArrival } from 'react-icons/fa';
 
@@ -30,11 +29,8 @@ export const PERMISSIONS = {
   VIEW_DISPATCH: 'view_dispatch',
   MANAGE_DISPATCH: 'manage_dispatch',
   VIEW_REPORTS: 'view_reports',
-  VIEW_ACTIVITY_LOGS: 'view_activity_logs',
-  VIEW_NOTIFICATIONS: 'view_notifications',
-  VIEW_TASKS: 'view_tasks',
-  CREATE_TASKS: 'create_tasks',
-  MANAGE_USERS: 'manage_users',
+  VIEW_AI_OPERATIONS: 'view_ai_operations',
+  VIEW_MESSAGES_LOG: 'view_messages_log',
 };
 
 // Role → permissions mapping
@@ -49,8 +45,8 @@ const rolePermissions = {
     PERMISSIONS.VIEW_WAREHOUSE,
     PERMISSIONS.MANAGE_WAREHOUSE,
     PERMISSIONS.VIEW_DISPATCH,
-    PERMISSIONS.VIEW_NOTIFICATIONS,
-    PERMISSIONS.VIEW_TASKS,
+    PERMISSIONS.VIEW_AI_OPERATIONS,
+    PERMISSIONS.VIEW_MESSAGES_LOG,
   ],
 
   [ROLES.OPERATIONS_STAFF]: [
@@ -61,24 +57,24 @@ const rolePermissions = {
     PERMISSIONS.VIEW_DISPATCH,
     PERMISSIONS.MANAGE_DISPATCH,
     PERMISSIONS.VIEW_REPORTS,
-    PERMISSIONS.VIEW_NOTIFICATIONS,
-    PERMISSIONS.VIEW_TASKS,
+    PERMISSIONS.VIEW_AI_OPERATIONS,
+    PERMISSIONS.VIEW_MESSAGES_LOG,
   ],
 
   [ROLES.DOCUMENTATION_EXEC]: [
     PERMISSIONS.VIEW_DASHBOARD,
     PERMISSIONS.VIEW_CARGO,
     PERMISSIONS.VIEW_REPORTS,
-    PERMISSIONS.VIEW_NOTIFICATIONS,
-    PERMISSIONS.VIEW_TASKS,
+    PERMISSIONS.VIEW_AI_OPERATIONS,
+    PERMISSIONS.VIEW_MESSAGES_LOG,
   ],
 
   [ROLES.ACCOUNTS_STAFF]: [
     PERMISSIONS.VIEW_DASHBOARD,
     PERMISSIONS.VIEW_CARGO,
     PERMISSIONS.VIEW_REPORTS,
-    PERMISSIONS.VIEW_NOTIFICATIONS,
-    PERMISSIONS.VIEW_TASKS,
+    PERMISSIONS.VIEW_AI_OPERATIONS,
+    PERMISSIONS.VIEW_MESSAGES_LOG,
   ],
 };
 
@@ -98,45 +94,41 @@ export const isSuperAdmin = (role) => role === ROLES.SUPER_ADMIN;
 // Role-based sidebar navigation
 // ──────────────────────────────────────────────────────────────
 const ALL_NAV = {
-  dashboard:   { to: '/dashboard',    icon: MdDashboard,      label: 'Dashboard' },
-  cargo:       { to: '/cargo',        icon: MdInventory,      label: 'Cargo List' },
-  addCargo:    { to: '/cargo/add',    icon: MdAdd,            label: 'Add Cargo' },
-  warehouse:   { to: '/warehouse',    icon: MdWarehouse,      label: 'Warehouse' },
-  dispatch:    { to: '/dispatch',     icon: MdLocalShipping,  label: 'Dispatch' },
-  reports:     { to: '/reports',      icon: MdAssessment,     label: 'Reports' },
-  activityLogs:{ to: '/activity-logs',icon: MdHistory,        label: 'Activity Logs' },
-  notifications:{ to: '/notifications',icon: MdNotifications, label: 'Notifications' },
-  tasks:       { to: '/tasks',        icon: MdAssignment,     label: 'My Tasks' },
-  users:       { to: '/users',        icon: MdPeople,         label: 'User Management' },
-  profile:     { to: '/profile',      icon: MdPerson,         label: 'Profile' },
+  dashboard:    { to: '/dashboard',    icon: MdDashboard,      label: 'Dashboard',        group: 'core' },
+  cargo:        { to: '/cargo',        icon: MdInventory,      label: 'Cargo Inventory',  group: 'core' },
+  addCargo:     { to: '/cargo/add',    icon: MdAdd,            label: 'Receive Cargo',    group: 'core' },
+  warehouse:    { to: '/warehouse',    icon: MdWarehouse,      label: 'Warehouse',        group: 'core' },
+  dispatch:     { to: '/dispatch',     icon: MdLocalShipping,  label: 'Dispatch',         group: 'core' },
+  reports:      { to: '/reports',      icon: MdAssessment,     label: 'Reports',          group: 'core' },
+  aiOperations: { to: '/ai-operations',icon: MdSmartToy,       label: 'AI Operations',    group: 'core' },
+  messaging:    { to: '/messaging',     icon: MdMessage,        label: 'Messaging Center', group: 'core' },
 };
 
 const roleNavConfig = {
   [ROLES.SUPER_ADMIN]: [
     ALL_NAV.dashboard, ALL_NAV.cargo, ALL_NAV.addCargo,
     ALL_NAV.warehouse, ALL_NAV.dispatch, ALL_NAV.reports,
-    ALL_NAV.activityLogs, ALL_NAV.tasks, ALL_NAV.users,
-    ALL_NAV.notifications, ALL_NAV.profile,
+    ALL_NAV.aiOperations, ALL_NAV.messaging,
   ],
   [ROLES.WAREHOUSE_STAFF]: [
     ALL_NAV.dashboard, ALL_NAV.cargo, ALL_NAV.addCargo,
     ALL_NAV.warehouse, ALL_NAV.dispatch,
-    ALL_NAV.tasks, ALL_NAV.notifications, ALL_NAV.profile,
+    ALL_NAV.aiOperations, ALL_NAV.messaging,
   ],
   [ROLES.OPERATIONS_STAFF]: [
     ALL_NAV.dashboard, ALL_NAV.cargo, ALL_NAV.addCargo,
     ALL_NAV.dispatch, ALL_NAV.reports,
-    ALL_NAV.tasks, ALL_NAV.notifications, ALL_NAV.profile,
+    ALL_NAV.aiOperations, ALL_NAV.messaging,
   ],
   [ROLES.DOCUMENTATION_EXEC]: [
     ALL_NAV.dashboard, ALL_NAV.cargo,
     ALL_NAV.reports,
-    ALL_NAV.tasks, ALL_NAV.notifications, ALL_NAV.profile,
+    ALL_NAV.aiOperations, ALL_NAV.messaging,
   ],
   [ROLES.ACCOUNTS_STAFF]: [
     ALL_NAV.dashboard, ALL_NAV.cargo,
     ALL_NAV.reports,
-    ALL_NAV.tasks, ALL_NAV.notifications, ALL_NAV.profile,
+    ALL_NAV.aiOperations, ALL_NAV.messaging,
   ],
 };
 

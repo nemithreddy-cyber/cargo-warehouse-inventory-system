@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { MdMenu, MdNotifications, MdSearch, MdPerson, MdLogout, MdSettings } from 'react-icons/md';
-import { FaPlaneArrival } from 'react-icons/fa';
+import OrbemLogo from './OrbemLogo';
 import { useSidebar } from '../context/SidebarContext';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
@@ -31,7 +31,7 @@ export default function Navbar() {
   const [notifOpen, setNotifOpen] = useState(false);
 
   const title = pageTitles[location.pathname] ||
-    (location.pathname.startsWith('/cargo/') ? 'Cargo Details' : 'Cargo Warehouse');
+    (location.pathname.startsWith('/cargo/') ? 'Cargo Details' : 'ORBEM Solutions');
 
   const handleLogout = () => {
     logout();
@@ -69,7 +69,7 @@ export default function Navbar() {
           <MdMenu className="text-slate-600 text-xl" />
         </button>
         <div className="flex items-center gap-2">
-          <FaPlaneArrival className="text-amber-500 text-lg hidden sm:block" />
+          <OrbemLogo className="w-5 h-5 text-amber-500 hidden sm:block" />
           <h2 className="text-slate-800 font-semibold text-base lg:text-lg">{title}</h2>
         </div>
       </div>
@@ -156,21 +156,6 @@ export default function Navbar() {
 
           {dropdownOpen && (
             <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-50">
-              <button
-                onClick={() => { navigate('/profile'); setDropdownOpen(false); }}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 w-full text-left transition-colors"
-              >
-                <MdPerson className="text-slate-500" />
-                <span className="text-sm text-slate-700">Profile</span>
-              </button>
-              <button
-                onClick={() => { navigate('/profile'); setDropdownOpen(false); }}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 w-full text-left transition-colors"
-              >
-                <MdSettings className="text-slate-500" />
-                <span className="text-sm text-slate-700">Settings</span>
-              </button>
-              <div className="border-t border-slate-100"></div>
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-3 px-4 py-3 hover:bg-red-50 w-full text-left transition-colors"

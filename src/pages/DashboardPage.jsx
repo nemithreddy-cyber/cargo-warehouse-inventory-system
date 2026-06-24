@@ -5,7 +5,7 @@ import {
   MdCheckCircle, MdTrendingUp, MdAdd, MdVisibility, MdArrowForward,
   MdWarning, MdError, MdLightbulb, MdNotifications, MdCheck,
   MdAssignment, MdPending, MdPlayArrow, MdCalendarToday,
-  MdPeople, MdAssessment, MdBarChart, MdReceipt,
+  MdPeople, MdAssessment, MdBarChart, MdReceipt, MdRefresh,
 } from 'react-icons/md';
 import { FaBoxes, FaPlane } from 'react-icons/fa';
 import DashboardCard from '../components/DashboardCard';
@@ -17,6 +17,7 @@ import { useAuth } from '../context/AuthContext';
 import { formatDate, getActivityColor, getActivityIcon } from '../utils/helpers';
 import { ROLES } from '../config/permissions';
 import api from '../utils/api';
+
 
 // ─── Shared helpers ────────────────────────────────────────────
 const PRIORITY_COLORS = {
@@ -38,6 +39,105 @@ function formatShortDate(dateStr) {
 function isOverdue(dateStr, status) {
   if (!dateStr || status === 'Completed') return false;
   return new Date(dateStr) < new Date();
+}
+
+// ─── Rule-Based Alerts Panel (shared across roles) ────────────
+function RuleAlertsPanel({ alerts, suggestions, loadingAlerts, onRefresh }) {
+  const navigate = useNavigate();
+  const getAlertStyles = (priority) => {
+    if (priority === 'critical') return {
+      bg: 'bg-red-50 border-red-200', text: 'text-red-800',
+      badge: 'bg-red-500 text-white', icon: MdError, iconColor: 'text-red-500'
+    };
+    return {
+      bg: 'bg-amber-50 border-amber-200', text: 'text-amber-800',
+      badge: 'bg-amber-500 text-white', icon: MdWarning, iconColor: 'text-amber-500'
+    };
+  };
+
+  if (loadingAlerts) {
+    return (
+      <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
+        <div className="h-6 bg-slate-100 rounded w-48 animate-pulse mb-4" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-24 bg-slate-50 rounded-2xl animate-pulse" />)}
+        </div>
+      </div>
+    );
+  }
+
+  const displayAlerts = alerts.length > 0 ? alerts : [
+    { id: 'ok', priority: 'warning', title: 'System Healthy', description: 'No critical alerts detected. All warehouse zones and cargo statuses are within normal thresholds.', type: 'ok' }
+  ];
+
+  return (
+    <div className="space-y-4">
+      {/* Alerts */}
+      <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
+            <span>🚨 Critical Alerts & Priorities</span>
+            <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+              alerts.length > 0 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'
+            }`}>{alerts.length} Active</span>
+          </h3>
+          <button
+            onClick={onRefresh}
+            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 border border-slate-200 hover:bg-slate-50 px-3 py-1.5 rounded-lg transition-colors"
+            title="Refresh alerts"
+          >
+            <MdRefresh className="text-base" /> Refresh
+          </button>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {displayAlerts.slice(0, 4).map((alert) => {
+            const styles = getAlertStyles(alert.priority);
+            const AlertIcon = styles.icon;
+            return (
+              <div key={alert.id} className={`border rounded-2xl p-4 flex flex-col justify-between transition-all hover:shadow-md ${styles.bg}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center shadow-sm">
+                      <AlertIcon className={`text-lg ${styles.iconColor}`} />
+                    </div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{alert.title}</span>
+                  </div>
+                  <span className={`text-xs font-extrabold px-2 py-0.5 rounded-full ${styles.badge}`}>
+                    {alert.priority === 'critical' ? '!' : '⚠'}
+                  </span>
+                </div>
+                <p className={`text-xs font-semibold mt-3 ${styles.text}`}>{alert.description}</p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Smart Recommendations */}
+      {suggestions.length > 0 && (
+        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
+          <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2 mb-3">
+            <MdLightbulb className="text-amber-500 text-lg" /> Smart Recommendations
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {suggestions.slice(0, 3).map((rec, i) => (
+              <div key={i} className="p-3 bg-gradient-to-r from-blue-50/30 to-indigo-50/30 border border-slate-100 rounded-xl hover:shadow-sm transition-all flex flex-col gap-2">
+                <div className="flex items-start gap-2">
+                  <div className="w-5 h-5 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <MdLightbulb className="text-blue-600 text-xs" />
+                  </div>
+                  <p className="text-xs text-slate-700 font-semibold leading-relaxed">{rec.text}</p>
+                </div>
+                <button onClick={() => navigate(rec.path)} className="text-[10px] text-blue-600 hover:text-blue-700 font-bold self-start flex items-center gap-0.5">
+                  {rec.action} <MdArrowForward className="text-[8px]" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ─── Tasks Widget (shared across all dashboards) ──────────────
@@ -90,38 +190,27 @@ function AssignedTasksWidget({ myTasks, navigate }) {
 }
 
 // ─── Super Admin Dashboard (full view) ────────────────────────
-function SuperAdminDashboard({ navigate, notifications, data }) {
+function SuperAdminDashboard({ navigate, notifications, data, alerts, suggestions, loadingAlerts, onRefreshAlerts }) {
   const { myTasks, pendingCount, inProgressCount } = useTasks();
   const cargoData = data.recentCargo || [];
   const warehouseZones = data.warehouseZones || [];
   const dashboardStats = data;
   const recentCargo = cargoData.slice(0, 5);
-  const recentNotifs = notifications.slice(0, 5);
 
   const stats = [
-    { title: 'Total Cargo', value: dashboardStats.totalCargo, icon: FaBoxes, bgColor: 'bg-blue-50', color: 'text-blue-600', trend: 'up', trendValue: '+18.4%', description: 'vs last month' },
-    { title: 'Received', value: dashboardStats.receivedCargo, icon: MdFlightLand, bgColor: 'bg-cyan-50', color: 'text-cyan-600', trend: 'up', trendValue: '+2 today' },
-    { title: 'Stored', value: dashboardStats.storedCargo, icon: MdWarehouse, bgColor: 'bg-purple-50', color: 'text-purple-600', trend: 'neutral', trendValue: 'stable' },
-    { title: 'Ready for Dispatch', value: dashboardStats.readyForDispatch, icon: MdInventory, bgColor: 'bg-amber-50', color: 'text-amber-600', trend: 'up', trendValue: 'urgent' },
-    { title: 'Dispatched', value: dashboardStats.dispatchedCargo, icon: MdLocalShipping, bgColor: 'bg-orange-50', color: 'text-orange-600', trend: 'up', trendValue: '+1 today' },
-    { title: 'Delivered', value: dashboardStats.deliveredCargo, icon: MdCheckCircle, bgColor: 'bg-green-50', color: 'text-green-600', trend: 'up', trendValue: '+33%' },
+    { title: 'Total Cargo', value: dashboardStats.totalCargo, icon: FaBoxes, bgColor: 'bg-blue-50', color: 'text-blue-600', trend: 'up', trendValue: '+18.4%', description: 'vs last month', onClick: () => navigate('/cargo') },
+    { title: 'Received', value: dashboardStats.receivedCargo, icon: MdFlightLand, bgColor: 'bg-cyan-50', color: 'text-cyan-600', trend: 'up', trendValue: '+2 today', onClick: () => navigate('/cargo/add') },
+    { title: 'Stored', value: dashboardStats.storedCargo, icon: MdWarehouse, bgColor: 'bg-purple-50', color: 'text-purple-600', trend: 'neutral', trendValue: 'stable', onClick: () => navigate('/warehouse') },
+    { title: 'Ready for Dispatch', value: dashboardStats.readyForDispatch, icon: MdInventory, bgColor: 'bg-amber-50', color: 'text-amber-600', trend: 'up', trendValue: 'urgent', onClick: () => navigate('/dispatch', { state: { status: 'Ready' } }) },
+    { title: 'Dispatched', value: dashboardStats.dispatchedCargo, icon: MdLocalShipping, bgColor: 'bg-orange-50', color: 'text-orange-600', trend: 'up', trendValue: '+1 today', onClick: () => navigate('/dispatch', { state: { status: 'Dispatched' } }) },
+    { title: 'Delivered', value: dashboardStats.deliveredCargo, icon: MdCheckCircle, bgColor: 'bg-green-50', color: 'text-green-600', trend: 'up', trendValue: '+33%', onClick: () => navigate('/reports') },
   ];
   const quickActions = [
-    { label: 'Add Cargo', icon: MdAdd, color: 'bg-blue-600 hover:bg-blue-700', to: '/cargo/add' },
-    { label: 'View Cargo', icon: MdVisibility, color: 'bg-purple-600 hover:bg-purple-700', to: '/cargo' },
+    { label: 'Receive Cargo', icon: MdAdd, color: 'bg-blue-600 hover:bg-blue-700', to: '/cargo/add' },
+    { label: 'View Inventory', icon: MdVisibility, color: 'bg-purple-600 hover:bg-purple-700', to: '/cargo' },
     { label: 'Manage Users', icon: MdPeople, color: 'bg-amber-500 hover:bg-amber-600', to: '/users' },
     { label: 'Reports', icon: MdTrendingUp, color: 'bg-green-600 hover:bg-green-700', to: '/reports' },
   ];
-  const alertsList = [
-    { id: 'a1', title: 'High Priority Cargo', desc: 'CW-2024-006 (Precious Metals) requires vault storage verification.', priority: 'critical' },
-    { id: 'a2', title: 'Dispatch Due Today', desc: 'DIS-002 (Pacific Trade Hub) is scheduled for terminal delivery today.', priority: 'warning' },
-    { id: 'a3', title: 'Zone Near Capacity', desc: 'Zone A has reached 80% occupancy limit for loose-cargo slots.', priority: 'warning' },
-    { id: 'a4', title: 'Delayed Delivery', desc: 'DIS-003 is currently delayed at customs transit hub.', priority: 'critical' },
-  ];
-  const getAlertStyles = (p) => {
-    if (p === 'critical') return { bg: 'bg-red-50 border-red-200', text: 'text-red-800', badge: 'bg-red-500 text-white', icon: MdError, iconColor: 'text-red-500' };
-    return { bg: 'bg-amber-50 border-amber-200', text: 'text-amber-800', badge: 'bg-amber-500 text-white', icon: MdWarning, iconColor: 'text-amber-500' };
-  };
 
   return (
     <div className="space-y-6">
@@ -130,68 +219,18 @@ function SuperAdminDashboard({ navigate, notifications, data }) {
         {stats.map((s) => <DashboardCard key={s.title} {...s} />)}
       </div>
 
-      {/* Alert Cards */}
-      <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
-            <span>🚨 Critical Alerts & Priorities</span>
-            <span className="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded-full font-bold">{alertsList.length} Active</span>
-          </h3>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {alertsList.map((alert) => {
-            const styles = getAlertStyles(alert.priority);
-            const AlertIcon = styles.icon;
-            return (
-              <div key={alert.id} className={`border rounded-2xl p-4 flex flex-col justify-between transition-all hover:shadow-md ${styles.bg}`}>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center shadow-sm">
-                      <AlertIcon className={`text-lg ${styles.iconColor}`} />
-                    </div>
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{alert.title}</span>
-                  </div>
-                  <span className={`text-xs font-extrabold px-2 py-0.5 rounded-full ${styles.badge}`}>1</span>
-                </div>
-                <p className={`text-xs font-semibold mt-3 ${styles.text}`}>{alert.desc}</p>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      {/* Dynamic Rule-Based Alerts Panel */}
+      <RuleAlertsPanel
+        alerts={alerts}
+        suggestions={suggestions}
+        loadingAlerts={loadingAlerts}
+        onRefresh={onRefreshAlerts}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <AssignedTasksWidget myTasks={myTasks} navigate={navigate} />
-        {/* Smart Recommendations */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-            <h3 className="font-semibold text-slate-800 flex items-center gap-2">
-              <MdLightbulb className="text-amber-500 text-lg" />
-              <span>Smart Recommendations</span>
-            </h3>
-          </div>
-          <div className="p-4 space-y-3 flex-1 overflow-y-auto max-h-[350px]">
-            {[
-              { text: 'Zone B has available cold-chain storage capacity (2-8°C).', action: 'Route to Zone B', path: '/warehouse' },
-              { text: 'CRG-20240003 has been cleared and is ready for dispatch loading.', action: 'Open Dispatch', path: '/dispatch' },
-              { text: 'Overall warehouse utilization is above 80%. Consider transfers.', action: 'Run reports', path: '/reports' },
-            ].map((rec, i) => (
-              <div key={i} className="p-3 bg-gradient-to-r from-blue-50/30 to-indigo-50/30 border border-slate-100 rounded-xl hover:shadow-sm transition-all flex flex-col gap-2">
-                <div className="flex items-start gap-2">
-                  <div className="w-5 h-5 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <MdLightbulb className="text-blue-600 text-xs" />
-                  </div>
-                  <p className="text-xs text-slate-700 font-semibold leading-relaxed">{rec.text}</p>
-                </div>
-                <button onClick={() => navigate(rec.path)} className="text-[10px] text-blue-600 hover:text-blue-700 font-bold self-start flex items-center gap-0.5">
-                  {rec.action} <MdArrowForward className="text-[8px]" />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
         {/* Quick Actions */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
           <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
             <h3 className="font-semibold text-slate-800">Quick Actions</h3>
           </div>
@@ -251,10 +290,10 @@ function SuperAdminDashboard({ navigate, notifications, data }) {
               <div key={zone.id} className="bg-slate-50 border border-slate-100 rounded-xl p-4 hover:shadow-md transition-all duration-200 hover:-translate-y-0.5">
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="font-bold text-slate-800 text-xs truncate max-w-[80px]">{zone.name}</h4>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white" style={{ backgroundColor: zone.color }}>{pct}%</span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full text-white ${pct >= 80 ? 'bg-red-500' : 'bg-green-500'}`}>{pct}%</span>
                 </div>
                 <div className="w-full bg-slate-200 rounded-full h-2 mb-3">
-                  <div className="h-2 rounded-full transition-all duration-700" style={{ width: `${pct}%`, backgroundColor: zone.color }} />
+                  <div className="h-2 rounded-full transition-all duration-700" style={{ width: `${pct}%`, backgroundColor: pct >= 80 ? '#ef4444' : zone.color }} />
                 </div>
                 <p className="text-[10px] text-slate-500 mb-1 truncate">{zone.description}</p>
                 <p className="text-[10px] text-slate-600"><span className="font-semibold">{zone.occupiedLocations}</span> / {zone.totalLocations} locations</p>
@@ -277,9 +316,9 @@ function WarehouseStaffDashboard({ navigate, data }) {
   const readyCargo = cargoData.filter((c) => c.status === 'Ready for Dispatch' || c.status === 'Ready For Dispatch');
 
   const stats = [
-    { title: 'Stored Cargo', value: dashboardStats.storedCargo, icon: MdWarehouse, bgColor: 'bg-purple-50', color: 'text-purple-600', trend: 'neutral', trendValue: 'stable' },
-    { title: 'Received Today', value: dashboardStats.receivedCargo, icon: MdFlightLand, bgColor: 'bg-cyan-50', color: 'text-cyan-600', trend: 'up', trendValue: '+2 today' },
-    { title: 'Ready for Dispatch', value: dashboardStats.readyForDispatch, icon: MdInventory, bgColor: 'bg-amber-50', color: 'text-amber-600', trend: 'up', trendValue: 'urgent' },
+    { title: 'Stored Cargo', value: dashboardStats.storedCargo, icon: MdWarehouse, bgColor: 'bg-purple-50', color: 'text-purple-600', trend: 'neutral', trendValue: 'stable', onClick: () => navigate('/warehouse') },
+    { title: 'Received Today', value: dashboardStats.receivedCargo, icon: MdFlightLand, bgColor: 'bg-cyan-50', color: 'text-cyan-600', trend: 'up', trendValue: '+2 today', onClick: () => navigate('/cargo/add') },
+    { title: 'Ready for Dispatch', value: dashboardStats.readyForDispatch, icon: MdInventory, bgColor: 'bg-amber-50', color: 'text-amber-600', trend: 'up', trendValue: 'urgent', onClick: () => navigate('/dispatch', { state: { status: 'Ready' } }) },
     { title: 'My Pending Tasks', value: pendingCount, icon: MdAssignment, bgColor: 'bg-blue-50', color: 'text-blue-600', trend: 'neutral', trendValue: 'assigned' },
   ];
 
@@ -357,10 +396,10 @@ function OperationsStaffDashboard({ navigate, data }) {
   const readyCargo = cargoData.filter((c) => c.status === 'Ready for Dispatch' || c.status === 'Ready For Dispatch');
 
   const stats = [
-    { title: 'In Transit', value: dispatched.length, icon: MdLocalShipping, bgColor: 'bg-orange-50', color: 'text-orange-600', trend: 'up', trendValue: 'active' },
-    { title: 'Ready for Dispatch', value: readyCargo.length, icon: MdInventory, bgColor: 'bg-amber-50', color: 'text-amber-600', trend: 'up', trendValue: 'urgent' },
-    { title: 'Delivered', value: dashboardStats.deliveredCargo, icon: MdCheckCircle, bgColor: 'bg-green-50', color: 'text-green-600', trend: 'up', trendValue: '+33%' },
-    { title: 'Total Cargo', value: dashboardStats.totalCargo, icon: FaBoxes, bgColor: 'bg-blue-50', color: 'text-blue-600', trend: 'up', trendValue: 'managed' },
+    { title: 'In Transit', value: dispatched.length, icon: MdLocalShipping, bgColor: 'bg-orange-50', color: 'text-orange-600', trend: 'up', trendValue: 'active', onClick: () => navigate('/dispatch', { state: { status: 'Dispatched' } }) },
+    { title: 'Ready for Dispatch', value: readyCargo.length, icon: MdInventory, bgColor: 'bg-amber-50', color: 'text-amber-600', trend: 'up', trendValue: 'urgent', onClick: () => navigate('/dispatch', { state: { status: 'Ready' } }) },
+    { title: 'Delivered', value: dashboardStats.deliveredCargo, icon: MdCheckCircle, bgColor: 'bg-green-50', color: 'text-green-600', trend: 'up', trendValue: '+33%', onClick: () => navigate('/reports') },
+    { title: 'Total Cargo', value: dashboardStats.totalCargo, icon: FaBoxes, bgColor: 'bg-blue-50', color: 'text-blue-600', trend: 'up', trendValue: 'managed', onClick: () => navigate('/cargo') },
   ];
 
   return (
@@ -428,9 +467,9 @@ function DocumentationDashboard({ navigate, data }) {
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { title: 'Total Cargo', value: dashboardStats.totalCargo, icon: FaBoxes, bgColor: 'bg-blue-50', color: 'text-blue-600', trend: 'up', trendValue: '12 items' },
-          { title: 'Dispatched', value: dashboardStats.dispatchedCargo, icon: MdLocalShipping, bgColor: 'bg-orange-50', color: 'text-orange-600', trend: 'up', trendValue: 'in transit' },
-          { title: 'Delivered', value: dashboardStats.deliveredCargo, icon: MdCheckCircle, bgColor: 'bg-green-50', color: 'text-green-600', trend: 'up', trendValue: 'complete' },
+          { title: 'Total Cargo', value: dashboardStats.totalCargo, icon: FaBoxes, bgColor: 'bg-blue-50', color: 'text-blue-600', trend: 'up', trendValue: '12 items', onClick: () => navigate('/cargo') },
+          { title: 'Dispatched', value: dashboardStats.dispatchedCargo, icon: MdLocalShipping, bgColor: 'bg-orange-50', color: 'text-orange-600', trend: 'up', trendValue: 'in transit', onClick: () => navigate('/dispatch', { state: { status: 'Dispatched' } }) },
+          { title: 'Delivered', value: dashboardStats.deliveredCargo, icon: MdCheckCircle, bgColor: 'bg-green-50', color: 'text-green-600', trend: 'up', trendValue: 'complete', onClick: () => navigate('/reports') },
           { title: 'Pending Docs', value: myTasks.filter((t) => t.status !== 'Completed').length, icon: MdAssignment, bgColor: 'bg-purple-50', color: 'text-purple-600', trend: 'neutral', trendValue: 'tasks' },
         ].map((s) => <DashboardCard key={s.title} {...s} />)}
       </div>
@@ -497,7 +536,7 @@ function AccountsDashboard({ navigate, data }) {
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { title: 'Total Cargo', value: dashboardStats.totalCargo, icon: FaBoxes, bgColor: 'bg-blue-50', color: 'text-blue-600', trend: 'up', trendValue: '12 items' },
+          { title: 'Total Cargo', value: dashboardStats.totalCargo, icon: FaBoxes, bgColor: 'bg-blue-50', color: 'text-blue-600', trend: 'up', trendValue: '12 items', onClick: () => navigate('/cargo') },
           { title: 'Total Weight', value: `${(totalWeight/1000).toFixed(1)}t`, icon: MdBarChart, bgColor: 'bg-purple-50', color: 'text-purple-600', trend: 'up', trendValue: 'kg managed' },
           { title: 'Chargeable Wt.', value: `${(totalChargeableWeight/1000).toFixed(1)}t`, icon: MdReceipt, bgColor: 'bg-amber-50', color: 'text-amber-600', trend: 'up', trendValue: 'billable' },
           { title: 'My Tasks', value: myTasks.filter((t) => t.status !== 'Completed').length, icon: MdAssignment, bgColor: 'bg-rose-50', color: 'text-rose-600', trend: 'neutral', trendValue: 'pending' },
@@ -580,21 +619,48 @@ export default function DashboardPage() {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Rule-based alerts state
+  const [alertData, setAlertData] = useState({ alerts: [], suggestions: [] });
+  const [loadingAlerts, setLoadingAlerts] = useState(false);
+
+  const fetchDashboard = async () => {
+    try {
+      const res = await api.get('/dashboard');
+      setDashboardData(res.data.data || res.data);
+    } catch (err) {
+      console.error('Failed to load dashboard', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAlerts = async () => {
+    setLoadingAlerts(true);
+    try {
+      const [alertRes, suggestRes] = await Promise.all([
+        api.get('/rules/alerts'),
+        api.get('/rules/suggestions'),
+      ]);
+      const allAlerts = alertRes.data?.data?.alerts || [];
+      const allSuggestions = [
+        ...(suggestRes.data?.data?.suggestions || []),
+        ...(suggestRes.data?.data?.recommendations || []),
+      ];
+      setAlertData({ alerts: allAlerts, suggestions: allSuggestions });
+    } catch (err) {
+      console.error('Failed to load rule-based alerts', err);
+    } finally {
+      setLoadingAlerts(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchDashboard = async () => {
-      try {
-        const res = await api.get('/dashboard');
-        setDashboardData(res.data.data || res.data);
-      } catch (err) {
-        console.error('Failed to load dashboard', err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchDashboard();
+    fetchAlerts();
     const interval = setInterval(fetchDashboard, 30000);
     return () => clearInterval(interval);
   }, []);
+
 
   const role = user?.role || ROLES.WAREHOUSE_STAFF;
   const bannerGradient = BANNER_COLORS[role] || BANNER_COLORS[ROLES.WAREHOUSE_STAFF];
@@ -650,11 +716,11 @@ export default function DashboardPage() {
       </div>
 
       {/* Role-scoped content */}
-      {role === ROLES.SUPER_ADMIN        && <SuperAdminDashboard navigate={navigate} notifications={notifications} data={dashboardData} />}
-      {role === ROLES.WAREHOUSE_STAFF    && <WarehouseStaffDashboard navigate={navigate} data={dashboardData} />}
-      {role === ROLES.OPERATIONS_STAFF   && <OperationsStaffDashboard navigate={navigate} data={dashboardData} />}
-      {role === ROLES.DOCUMENTATION_EXEC && <DocumentationDashboard navigate={navigate} data={dashboardData} />}
-      {role === ROLES.ACCOUNTS_STAFF     && <AccountsDashboard navigate={navigate} data={dashboardData} />}
+      {role === ROLES.SUPER_ADMIN        && <SuperAdminDashboard navigate={navigate} notifications={notifications} data={dashboardData} alerts={alertData.alerts} suggestions={alertData.suggestions} loadingAlerts={loadingAlerts} onRefreshAlerts={fetchAlerts} />}
+      {role === ROLES.WAREHOUSE_STAFF    && <WarehouseStaffDashboard navigate={navigate} data={dashboardData} alerts={alertData.alerts} suggestions={alertData.suggestions} loadingAlerts={loadingAlerts} onRefreshAlerts={fetchAlerts} />}
+      {role === ROLES.OPERATIONS_STAFF   && <OperationsStaffDashboard navigate={navigate} data={dashboardData} alerts={alertData.alerts} suggestions={alertData.suggestions} loadingAlerts={loadingAlerts} onRefreshAlerts={fetchAlerts} />}
+      {role === ROLES.DOCUMENTATION_EXEC && <DocumentationDashboard navigate={navigate} data={dashboardData} alerts={alertData.alerts} suggestions={alertData.suggestions} loadingAlerts={loadingAlerts} onRefreshAlerts={fetchAlerts} />}
+      {role === ROLES.ACCOUNTS_STAFF     && <AccountsDashboard navigate={navigate} data={dashboardData} alerts={alertData.alerts} suggestions={alertData.suggestions} loadingAlerts={loadingAlerts} onRefreshAlerts={fetchAlerts} />}
     </div>
   );
 }

@@ -1,17 +1,13 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { MdLogout, MdClose } from 'react-icons/md';
-import { FaPlaneArrival } from 'react-icons/fa';
+import OrbemLogo from './OrbemLogo';
 import { useSidebar } from '../context/SidebarContext';
 import { useAuth } from '../context/AuthContext';
-import { useNotifications } from '../context/NotificationContext';
-import { useTasks } from '../context/TaskContext';
 import { getRoleNav, roleBadgeColors } from '../config/permissions';
 
 export default function Sidebar() {
   const { isOpen, isMobileOpen, closeMobileSidebar } = useSidebar();
   const { user, logout } = useAuth();
-  const { unreadCount } = useNotifications();
-  const { pendingCount, inProgressCount } = useTasks();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -20,19 +16,41 @@ export default function Sidebar() {
   };
 
   const navItems = getRoleNav(user?.role);
-  const taskBadgeCount = pendingCount + inProgressCount;
   const roleColors = roleBadgeColors[user?.role] || roleBadgeColors['Warehouse Staff'];
+
+  // Split nav into core cargo workflow vs additional features
+  const coreItems  = navItems.filter((item) => item.group === 'core');
+  const extraItems = navItems.filter((item) => item.group === 'extra');
+
+  const renderNavItem = ({ to, icon: Icon, label }) => (
+    <li key={to}>
+      <NavLink
+        to={to}
+        onClick={closeMobileSidebar}
+        className={({ isActive }) =>
+          `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group w-full ${
+            isActive
+              ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30'
+              : 'text-blue-200 hover:bg-white/10 hover:text-white'
+          }`
+        }
+      >
+        <Icon className="text-lg flex-shrink-0" />
+        <span className="flex-1 text-left">{label}</span>
+      </NavLink>
+    </li>
+  );
 
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 py-5 border-b border-white/10">
-        <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center shadow-lg flex-shrink-0">
-          <FaPlaneArrival className="text-white text-lg" />
+        <div className="w-10 h-10 rounded-xl bg-slate-900/50 border border-white/10 flex items-center justify-center shadow-inner flex-shrink-0">
+          <OrbemLogo className="w-7 h-7 text-white" />
         </div>
         <div className="overflow-hidden">
-          <h1 className="text-white font-bold text-sm leading-tight">Cargo Warehouse</h1>
-          <p className="text-blue-300 text-xs">Inventory System</p>
+          <h1 className="text-white font-bold text-sm leading-tight">ORBEM Solutions</h1>
+          <p className="text-blue-300 text-xs">Pvt. Ltd. Company</p>
         </div>
       </div>
 
@@ -54,40 +72,41 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 overflow-y-auto scrollbar-thin">
-        <p className="text-blue-400 text-xs font-semibold uppercase tracking-wider px-2 mb-3">Main Menu</p>
-        <ul className="space-y-1">
-          {navItems.map(({ to, icon: Icon, label }) => (
-            <li key={to}>
-              <NavLink
-                to={to}
-                onClick={closeMobileSidebar}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group w-full ${
-                    isActive
-                      ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30'
-                      : 'text-blue-200 hover:bg-white/10 hover:text-white'
-                  }`
-                }
-              >
-                <Icon className="text-lg flex-shrink-0" />
-                <span className="flex-1 text-left">{label}</span>
 
-                {/* Notification badge */}
-                {label === 'Notifications' && unreadCount > 0 && (
-                  <span className="bg-red-500 text-white text-xs font-extrabold px-2 py-0.5 rounded-full flex-shrink-0">
-                    {unreadCount}
-                  </span>
-                )}
-                {/* Task badge */}
-                {label === 'My Tasks' && taskBadgeCount > 0 && (
-                  <span className="bg-amber-400 text-slate-900 text-xs font-extrabold px-2 py-0.5 rounded-full flex-shrink-0">
-                    {taskBadgeCount}
-                  </span>
-                )}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
+        {/* ── Core Cargo Workflow ─────────────────────── */}
+        {coreItems.length > 0 && (
+          <>
+            <p className="text-amber-400 text-[10px] font-bold uppercase tracking-widest px-2 mb-2">
+              Core Modules
+            </p>
+            <ul className="space-y-1 mb-4">
+              {coreItems.map(renderNavItem)}
+            </ul>
+          </>
+        )}
+
+        {/* ── Additional Features ──────────────────────── */}
+        {extraItems.length > 0 && (
+          <>
+            <div className="border-t border-white/10 my-3" />
+            <p className="text-blue-400 text-[10px] font-bold uppercase tracking-widest px-2 mb-2">
+              Additional Features
+            </p>
+            <ul className="space-y-1">
+              {extraItems.map(renderNavItem)}
+            </ul>
+          </>
+        )}
+
+        {/* Fallback: if no group tags, render all items */}
+        {coreItems.length === 0 && extraItems.length === 0 && (
+          <>
+            <p className="text-blue-400 text-xs font-semibold uppercase tracking-wider px-2 mb-3">Main Menu</p>
+            <ul className="space-y-1">
+              {navItems.map(renderNavItem)}
+            </ul>
+          </>
+        )}
       </nav>
 
       {/* Logout */}
