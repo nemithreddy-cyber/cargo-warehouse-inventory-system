@@ -7,22 +7,39 @@ const db = require('../config/db');
  */
 const ensureTableExists = async () => {
   try {
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS message_logs (
-        id             INTEGER PRIMARY KEY AUTOINCREMENT,
-        recipient_name VARCHAR(120) NOT NULL,
-        phone_number   VARCHAR(50)  NULL,
-        email          VARCHAR(180) NULL,
-        channel        VARCHAR(20)  NOT NULL,
-        message        TEXT         NOT NULL,
-        status         VARCHAR(50)  NOT NULL,
-        sent_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        cargo_id       VARCHAR(50)  NULL,
-        error_message  TEXT         NULL
-      )
-    `);
+    const isMysql = db.getClientType?.() === 'mysql';
+    if (isMysql) {
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS message_logs (
+          id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          recipient_name VARCHAR(120)  NOT NULL,
+          phone_number   VARCHAR(50)   NULL,
+          email          VARCHAR(180)  NULL,
+          channel        VARCHAR(20)   NOT NULL,
+          message        TEXT          NOT NULL,
+          status         VARCHAR(50)   NOT NULL,
+          sent_at        TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          cargo_id       VARCHAR(50)   NULL,
+          error_message  TEXT          NULL
+        ) ENGINE=InnoDB
+      `);
+    } else {
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS message_logs (
+          id             INTEGER PRIMARY KEY AUTOINCREMENT,
+          recipient_name VARCHAR(120) NOT NULL,
+          phone_number   VARCHAR(50)  NULL,
+          email          VARCHAR(180) NULL,
+          channel        VARCHAR(20)  NOT NULL,
+          message        TEXT         NOT NULL,
+          status         VARCHAR(50)  NOT NULL,
+          sent_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          cargo_id       VARCHAR(50)  NULL,
+          error_message  TEXT         NULL
+        )
+      `);
+    }
   } catch (err) {
-    // If running in MySQL mode, table is already defined, or we handle translation fallback.
     console.warn('[MessageLogService] table ensure failed:', err.message);
   }
 };
