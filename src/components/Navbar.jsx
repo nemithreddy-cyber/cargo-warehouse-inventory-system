@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { MdMenu, MdNotifications, MdSearch, MdPerson, MdLogout, MdSettings } from 'react-icons/md';
 import OrbemLogo from './OrbemLogo';
 import { useSidebar } from '../context/SidebarContext';
@@ -69,7 +69,9 @@ export default function Navbar() {
           <MdMenu className="text-slate-600 text-xl" />
         </button>
         <div className="flex items-center gap-2">
-          <OrbemLogo className="w-5 h-5 text-amber-500 hidden sm:block" />
+          <Link to="/dashboard" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
+            <OrbemLogo className="w-5 h-5 text-amber-500 hidden sm:block" />
+          </Link>
           <h2 className="text-slate-800 font-semibold text-base lg:text-lg">{title}</h2>
         </div>
       </div>

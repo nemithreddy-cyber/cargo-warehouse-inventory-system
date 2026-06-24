@@ -1,4 +1,5 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
+
 import { MdLogout, MdClose } from 'react-icons/md';
 import OrbemLogo from './OrbemLogo';
 import { useSidebar } from '../context/SidebarContext';
@@ -44,7 +45,7 @@ export default function Sidebar() {
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="flex items-center gap-3 px-5 py-5 border-b border-white/10">
+      <Link to="/dashboard" className="flex items-center gap-3 px-5 py-5 border-b border-white/10 hover:opacity-90 transition-opacity">
         <div className="w-10 h-10 rounded-xl bg-slate-900/50 border border-white/10 flex items-center justify-center shadow-inner flex-shrink-0">
           <OrbemLogo className="w-7 h-7 text-white" />
         </div>
@@ -52,7 +53,7 @@ export default function Sidebar() {
           <h1 className="text-white font-bold text-sm leading-tight">ORBEM Solutions</h1>
           <p className="text-blue-300 text-xs">Pvt. Ltd. Company</p>
         </div>
-      </div>
+      </Link>
 
       {/* User info with role badge */}
       <div className="px-4 py-4 border-b border-white/10">
