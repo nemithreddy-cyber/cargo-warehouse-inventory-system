@@ -18,7 +18,7 @@ export default function MessagingSimulatorPage() {
 
   // Form state
   const [newMessage, setNewMessage] = useState({
-    channel: 'whatsapp',
+    channel: 'email',
     recipientName: '',
     recipientAddress: '',
     subject: 'Cargo Update',
@@ -86,20 +86,11 @@ export default function MessagingSimulatorPage() {
 
   const validateInputs = () => {
     const address = newMessage.recipientAddress.trim();
-    if (newMessage.channel === 'whatsapp') {
-      // Validate phone number format (standard: + followed by digits, length 10-15)
-      const phoneRegex = /^\+?[1-9]\d{9,14}$/;
-      if (!phoneRegex.test(address.replace(/[\s-()]/g, ''))) {
-        error('Invalid phone number. Use international format (e.g. +919876543210).');
-        return false;
-      }
-    } else {
-      // Validate email syntax
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(address)) {
-        error('Invalid email address format.');
-        return false;
-      }
+    // Validate email syntax
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(address)) {
+      error('Invalid email address format.');
+      return false;
     }
     return true;
   };
@@ -110,28 +101,18 @@ export default function MessagingSimulatorPage() {
 
     setSending(true);
     try {
-      let res;
-      if (newMessage.channel === 'whatsapp') {
-        res = await api.post('/messages/whatsapp', {
-          phoneNumber: newMessage.recipientAddress,
-          message: newMessage.message,
-          recipientName: newMessage.recipientName,
-          cargoId: newMessage.cargoId
-        });
-      } else {
-        res = await api.post('/messages/email', {
-          email: newMessage.recipientAddress,
-          subject: newMessage.subject,
-          message: newMessage.message,
-          recipientName: newMessage.recipientName,
-          cargoId: newMessage.cargoId
-        });
-      }
+      const res = await api.post('/messages/email', {
+        email: newMessage.recipientAddress,
+        subject: newMessage.subject,
+        message: newMessage.message,
+        recipientName: newMessage.recipientName,
+        cargoId: newMessage.cargoId
+      });
 
       if (res.data.success) {
         success(res.data.message || 'Alert dispatched successfully!');
         setNewMessage({
-          channel: 'whatsapp',
+          channel: 'email',
           recipientName: '',
           recipientAddress: '',
           subject: 'Cargo Update',
@@ -186,7 +167,7 @@ export default function MessagingSimulatorPage() {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {/* Total */}
         <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
           <div className="flex justify-between items-center">
@@ -197,18 +178,6 @@ export default function MessagingSimulatorPage() {
           </div>
           <h4 className="text-2xl font-bold text-slate-800 mt-2">{stats.total}</h4>
           <p className="text-[10px] text-slate-400 mt-1">Dispatches logged</p>
-        </div>
-
-        {/* WhatsApp */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
-          <div className="flex justify-between items-center">
-            <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">WhatsApp</span>
-            <div className="w-8 h-8 rounded-lg bg-green-50 text-green-600 flex items-center justify-center">
-              <MdSmartphone className="text-lg" />
-            </div>
-          </div>
-          <h4 className="text-2xl font-bold text-slate-800 mt-2">{stats.whatsapp}</h4>
-          <p className="text-[10px] text-slate-400 mt-1">Sent via Meta Cloud API</p>
         </div>
 
         {/* Email */}
@@ -258,17 +227,6 @@ export default function MessagingSimulatorPage() {
           </h3>
           <form onSubmit={handleSendMessage} className="space-y-4">
             <div>
-              <label className="text-xs font-semibold text-slate-500">API Messaging Channel</label>
-              <select
-                value={newMessage.channel}
-                onChange={(e) => setNewMessage({ ...newMessage, channel: e.target.value })}
-                className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2 mt-1 focus:ring-2 focus:ring-blue-500 outline-none font-sans"
-              >
-                <option value="whatsapp">WhatsApp Business API</option>
-                <option value="email">SMTP Email Client</option>
-              </select>
-            </div>
-            <div>
               <label className="text-xs font-semibold text-slate-500">Customer/Recipient Name</label>
               <input
                 type="text" required
@@ -279,30 +237,26 @@ export default function MessagingSimulatorPage() {
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-500">
-                {newMessage.channel === 'whatsapp' ? 'Recipient Phone Number' : 'Recipient Email Address'}
-              </label>
+              <label className="text-xs font-semibold text-slate-500">Recipient Email Address</label>
               <input
                 type="text" required
-                placeholder={newMessage.channel === 'whatsapp' ? '+919876543210' : 'billing@client.com'}
+                placeholder="billing@client.com"
                 value={newMessage.recipientAddress}
                 onChange={(e) => setNewMessage({ ...newMessage, recipientAddress: e.target.value })}
                 className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2 mt-1 focus:ring-2 focus:ring-blue-500 outline-none font-mono"
               />
             </div>
 
-            {newMessage.channel === 'email' && (
-              <div>
-                <label className="text-xs font-semibold text-slate-500">Email Subject</label>
-                <input
-                  type="text" required
-                  placeholder="E.g. Cargo Storage Update"
-                  value={newMessage.subject}
-                  onChange={(e) => setNewMessage({ ...newMessage, subject: e.target.value })}
-                  className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2 mt-1 focus:ring-2 focus:ring-blue-500 outline-none font-sans"
-                />
-              </div>
-            )}
+            <div>
+              <label className="text-xs font-semibold text-slate-500">Email Subject</label>
+              <input
+                type="text" required
+                placeholder="E.g. Cargo Storage Update"
+                value={newMessage.subject}
+                onChange={(e) => setNewMessage({ ...newMessage, subject: e.target.value })}
+                className="w-full text-xs border border-slate-200 rounded-xl px-3 py-2 mt-1 focus:ring-2 focus:ring-blue-500 outline-none font-sans"
+              />
+            </div>
 
             <div>
               <label className="text-xs font-semibold text-slate-500">Cargo Tracking ID (Optional)</label>

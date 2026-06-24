@@ -14,29 +14,7 @@ const handleCargoReceived = async (cargo) => {
   const zoneName = cargo.zone_name || 'Warehouse storage';
   const derivedEmail = `${customerName.toLowerCase().replace(/[^a-z0-9]/g, '')}@cargo-client.com`;
 
-  // WhatsApp Message
-  const waMsg = `Your cargo ${cargoId} has been received and stored in ${zoneName}.`;
-  try {
-    const waRes = await sendWhatsAppMessage(phoneNumber, waMsg);
-    await createLog({
-      recipient_name: customerName,
-      phone_number: phoneNumber,
-      channel: 'whatsapp',
-      message: waMsg,
-      status: waRes.simulated ? 'Delivered' : 'Sent',
-      cargo_id: cargoId
-    });
-  } catch (err) {
-    await createLog({
-      recipient_name: customerName,
-      phone_number: phoneNumber,
-      channel: 'whatsapp',
-      message: waMsg,
-      status: 'Failed',
-      cargo_id: cargoId,
-      error_message: err.message
-    });
-  }
+  // WhatsApp Message disabled (Email only)
 
   // Email Message
   const emailSubject = 'Cargo Received Successfully';
@@ -75,29 +53,7 @@ const handleCargoDispatched = async (dispatchRecord, cargo) => {
   const driverName = dispatchRecord.driver_name;
   const derivedEmail = `${customerName.toLowerCase().replace(/[^a-z0-9]/g, '')}@cargo-client.com`;
 
-  // WhatsApp Message
-  const waMsg = `Cargo ${cargoId} has been dispatched. Expected delivery: ${deliveryDate}. Driver: ${driverName}.`;
-  try {
-    const waRes = await sendWhatsAppMessage(phoneNumber, waMsg);
-    await createLog({
-      recipient_name: customerName,
-      phone_number: phoneNumber,
-      channel: 'whatsapp',
-      message: waMsg,
-      status: waRes.simulated ? 'Delivered' : 'Sent',
-      cargo_id: cargoId
-    });
-  } catch (err) {
-    await createLog({
-      recipient_name: customerName,
-      phone_number: phoneNumber,
-      channel: 'whatsapp',
-      message: waMsg,
-      status: 'Failed',
-      cargo_id: cargoId,
-      error_message: err.message
-    });
-  }
+  // WhatsApp Message disabled (Email only)
 
   // Email Message
   const emailSubject = 'Cargo Dispatch Notification';

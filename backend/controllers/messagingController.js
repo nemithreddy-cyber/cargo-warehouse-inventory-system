@@ -24,6 +24,7 @@ const getMessagingStats = async (req, res, next) => {
   }
 };
 
+/*
 const sendWhatsApp = async (req, res, next) => {
   try {
     const { phoneNumber, message, recipientName, cargoId } = req.body;
@@ -60,6 +61,7 @@ const sendWhatsApp = async (req, res, next) => {
     next(err);
   }
 };
+*/
 
 const sendEmail = async (req, res, next) => {
   try {
@@ -153,7 +155,7 @@ const retryMessage = async (req, res, next) => {
 module.exports = {
   getMessageLogs,
   getMessagingStats,
-  sendWhatsApp,
+  // sendWhatsApp,
   sendEmail,
   retryMessage
 };

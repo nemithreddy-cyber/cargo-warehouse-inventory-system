@@ -14,6 +14,7 @@ router.use(authenticate);
 router.get('/logs', messagingController.getMessageLogs);
 router.get('/stats', messagingController.getMessagingStats);
 
+/*
 router.post(
   '/whatsapp',
   [
@@ -23,6 +24,7 @@ router.post(
   ],
   messagingController.sendWhatsApp
 );
+*/
 
 router.post(
   '/email',
