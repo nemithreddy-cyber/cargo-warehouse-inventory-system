@@ -63,10 +63,18 @@ function getSqlContent() {
 
 // ─── Split multi-statement SQL into individual statements ────────────────────
 function splitStatements(sql) {
-  return sql
+  const noComments = sql
+    .split('\n')
+    .map(line => {
+      const idx = line.indexOf('--');
+      return idx !== -1 ? line.substring(0, idx) : line;
+    })
+    .join('\n');
+
+  return noComments
     .split(';')
     .map(s => s.trim())
-    .filter(s => s.length > 0 && !s.startsWith('--'));
+    .filter(s => s.length > 0);
 }
 
 // ─── libsql initializer ──────────────────────────────────────────────────────
@@ -99,12 +107,22 @@ async function initLibSql() {
   const { schemaSql, seedSql } = getSqlContent();
 
   for (const stmt of splitStatements(translateSql(schemaSql))) {
-    await db.execute(stmt);
+    try {
+      await db.execute(stmt);
+    } catch (err) {
+      console.error('❌ Failed schema statement:', stmt);
+      throw err;
+    }
   }
   console.log('✅ libsql: schema applied');
 
   for (const stmt of splitStatements(translateSql(seedSql))) {
-    await db.execute(stmt);
+    try {
+      await db.execute(stmt);
+    } catch (err) {
+      console.error('❌ Failed seed statement:', stmt);
+      throw err;
+    }
   }
   console.log('✅ libsql: seed applied');
 }
@@ -161,6 +179,47 @@ async function initializeDb() {
       const c = await mysqlPool.getConnection();
       console.log('✅ MySQL/TiDB connected');
       c.release();
+
+      // Check if schema is fully set up on MySQL
+      let schemaOk = false;
+      try {
+        await mysqlPool.query('SELECT 1 FROM awb_records LIMIT 1');
+        schemaOk = true;
+      } catch (err) {
+        console.warn('⚠️ MySQL: awb_records table not found. Auto-applying schema...');
+      }
+
+      if (!schemaOk) {
+        const { schemaSql, seedSql } = getSqlContent();
+        
+        // Strip USE and CREATE DATABASE statements for database portability
+        const cleanSql = (sql) => {
+          return sql
+            .replace(/CREATE DATABASE IF NOT EXISTS \w+[^;]*;/gi, '')
+            .replace(/USE \w+;/gi, '');
+        };
+
+        // Execute schema SQL statements
+        for (const stmt of splitStatements(cleanSql(schemaSql))) {
+          try {
+            await mysqlPool.query(stmt);
+          } catch (e) {
+            console.error('❌ MySQL Schema Execution error for statement:', stmt, e.message);
+          }
+        }
+        console.log('✅ MySQL schema applied successfully');
+
+        // Execute seed SQL statements
+        for (const stmt of splitStatements(cleanSql(seedSql))) {
+          try {
+            await mysqlPool.query(stmt);
+          } catch (e) {
+            console.error('❌ MySQL Seed Execution error for statement:', stmt, e.message);
+          }
+        }
+        console.log('✅ MySQL seed applied successfully');
+      }
+
       dbClient = 'mysql';
       return;
     } catch (err) {

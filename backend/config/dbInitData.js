@@ -322,9 +322,18 @@ INSERT OR IGNORE INTO quotations (id, quote_id, customer_name, weight, cargo_typ
   (2, 'QT-20260002', 'Global Traders',     30.00, 'Pharmaceuticals', 'MAA', 'BLR', 1.80, 10.00, 64.00,  'Pending'),
   (3, 'QT-20260003', 'Swift Logistics',    18.00, 'Textiles',        'DEL', 'HYD', 1.45,  0.00, 26.10,  'Pending');
 
-INSERT OR IGNORE INTO airway_bills (id, awb_number, cargo_id, customer_name, origin, destination, weight, status) VALUES
-  (1, 'AWB-98765432', 1, 'Raj Enterprises', 'BOM', 'DEL', 45.00, 'Generated'),
-  (2, 'AWB-12345678', 2, 'Global Traders',  'MAA', 'BLR', 30.00, 'Generated');
+INSERT OR IGNORE INTO awb_records (id, awb_number, cargo_id, shipper_name, shipper_address, consignee_name, consignee_address, origin_airport, destination_airport, cargo_description, pieces, actual_weight, chargeable_weight, declared_value, special_instructions, issue_date, status) VALUES
+  (1, 'AWB-2026-00001', 1, 'Raj Enterprises', 'Mumbai Warehouse Slot A-01', 'Raj Delhi Warehouse', 'DEL Airport Gate 4', 'BOM', 'DEL', 'Electronics', 3, 45.00, 45.00, 5000.00, 'Keep dry', '2026-06-01', 'issued'),
+  (2, 'AWB-2026-00002', 2, 'Global Traders', 'Chennai Warehouse Slot B-01', 'Global Bangalore Warehouse', 'BLR Airport Gate 2', 'MAA', 'BLR', 'Pharmaceuticals', 5, 30.00, 30.00, 12000.00, 'Refrigerate', '2026-06-02', 'issued');
+
+INSERT OR IGNORE INTO weight_calculations (id, cargo_id, description, pieces, actual_weight, volumetric_weight, chargeable_weight, length_cm, width_cm, height_cm, rate_per_kg, freight_cost) VALUES
+  (1, 1, 'Electronics parts', 3, 45.00, 12.00, 45.00, 60.00, 40.00, 30.00, 12.50, 562.50),
+  (2, 2, 'Medical cartons', 5, 30.00, 7.29, 30.00, 50.00, 35.00, 25.00, 15.00, 450.00);
+
+INSERT OR IGNORE INTO pickup_schedules (id, schedule_id, cargo_id, customer_name, pickup_type, location, customer_address, scheduled_date, scheduled_time, assigned_driver, vehicle_number, contact_number, status, notes) VALUES
+  (1, 'PKP-2026-00001', 3, 'Swift Logistics', 'airport_pickup', 'DEL Cargo Terminal 3', NULL, '2026-06-10', '10:30', 'Karan Johar', 'DL-01-AB-1234', '+91 9999888877', 'scheduled', 'Collect original customs slip'),
+  (2, 'PKP-2026-00002', 8, 'FastTrack Imports', 'customer_delivery', 'Pune Logistics Hub', 'Sector 15, Industrial Area', '2026-06-12', '14:00', 'Amitabh B', 'MH-12-CD-5678', '+91 9876543210', 'in_progress', 'Call before arrival');
+
 
 INSERT OR IGNORE INTO invoices (id, invoice_number, cargo_id, customer_name, amount, tax, total, status, due_date) VALUES
   (1, 'INV-20260001', 1, 'Raj Enterprises', 127.50, 6.38, 133.88, 'Paid',   '2026-06-30'),
