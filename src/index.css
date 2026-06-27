@@ -44,3 +44,216 @@
     border-radius: 10px;
   }
 }
+
+/* ────────────────────────────────────────────────────────── */
+/* Custom Animations & Interactions                           */
+/* ────────────────────────────────────────────────────────── */
+
+/* 1. Buttons active shrink */
+@media (prefers-reduced-motion: no-preference) {
+  button, .btn {
+    transition: transform 100ms ease-out, background-color 200ms, border-color 200ms;
+  }
+  button:active, .btn:active {
+    transform: scale(0.97) !important;
+  }
+}
+
+/* 2. Cards hover lift */
+@media (prefers-reduced-motion: no-preference) {
+  .hover-lift {
+    transition: transform 200ms ease-out, box-shadow 200ms ease-out, border-color 200ms ease-out;
+  }
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px -3px rgba(15, 76, 129, 0.08), 0 4px 6px -2px rgba(15, 76, 129, 0.04);
+  }
+}
+
+/* 3. Skeleton Shimmer loader */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+}
+
+/* 4. Banner Airplane Floating */
+@keyframes floatPlane {
+  0% {
+    transform: translateY(0) rotate(45deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(45deg);
+  }
+  100% {
+    transform: translateY(0) rotate(45deg);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .animate-float-plane {
+    animation: floatPlane 3s infinite ease-in-out;
+  }
+}
+
+/* 5. Growth Badge Pulsing once */
+@keyframes pulseOnce {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .animate-pulse-once {
+    animation: pulseOnce 0.6s ease-in-out 1;
+  }
+}
+
+/* 6. Form focus glow */
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+  border-color: #3b82f6 !important;
+  transition: box-shadow 0.15s ease-out, border-color 0.15s ease-out;
+}
+
+/* 7. Truck sliding keyframes */
+@keyframes slideTruck {
+  0% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(12px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .animate-truck-slide {
+    animation: slideTruck 600ms ease-in-out 1;
+  }
+}
+
+/* 8. AI Quick action chip hover sweep shimmer */
+.shine-hover {
+  position: relative;
+  overflow: hidden;
+}
+.shine-hover::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: skewX(-25deg);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .shine-hover:hover::after {
+    animation: shineSweep 0.75s ease-in-out;
+  }
+}
+@keyframes shineSweep {
+  100% {
+    left: 150%;
+  }
+}
+
+/* 9. Ripple click effect */
+.ripple-btn {
+  position: relative;
+  overflow: hidden;
+}
+.ripple-btn::after {
+  content: "";
+  background: rgba(255, 255, 255, 0.4);
+  display: block;
+  position: absolute;
+  border-radius: 50%;
+  padding-top: 240%;
+  padding-left: 240%;
+  margin-top: -120%;
+  margin-left: -120%;
+  opacity: 0;
+  transition: all 0.8s;
+}
+.ripple-btn:active::after {
+  padding-top: 0;
+  padding-left: 0;
+  margin-top: 0;
+  margin-left: 0;
+  opacity: 1;
+  transition: 0s;
+}
+
+/* 10. Bouncing typing dots */
+@keyframes bounceDot {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+.bounce-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+  animation: bounceDot 0.8s infinite ease-in-out;
+}
+.bounce-dot:nth-child(2) {
+  animation-delay: 0.16s;
+}
+.bounce-dot:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+/* 11. Recharts bar chart animation (growing upward) */
+@keyframes growBar {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .recharts-bar-rectangle {
+    transform-origin: bottom;
+  }
+  .recharts-bar-rectangle path, .recharts-rectangle {
+    transform-origin: bottom;
+    animation: growBar 800ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .recharts-bar-rectangle:nth-child(1) path { animation-delay: 0ms; }
+  .recharts-bar-rectangle:nth-child(2) path { animation-delay: 60ms; }
+  .recharts-bar-rectangle:nth-child(3) path { animation-delay: 120ms; }
+  .recharts-bar-rectangle:nth-child(4) path { animation-delay: 180ms; }
+  .recharts-bar-rectangle:nth-child(5) path { animation-delay: 240ms; }
+  .recharts-bar-rectangle:nth-child(6) path { animation-delay: 300ms; }
+  .recharts-bar-rectangle:nth-child(7) path { animation-delay: 360ms; }
+  .recharts-bar-rectangle:nth-child(8) path { animation-delay: 420ms; }
+}
+
+

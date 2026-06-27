@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { MotionConfig } from 'framer-motion';
 import { AuthProvider } from './context/AuthContext';
 import { SidebarProvider } from './context/SidebarContext';
 import { NotificationProvider } from './context/NotificationContext';
@@ -21,11 +22,14 @@ import ReportsPage from './pages/ReportsPage';
 import AIOperationsPage from './pages/AIOperationsPage';
 import MessagingSimulatorPage from './pages/MessagingSimulatorPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
+import ProfilePage from './pages/ProfilePage';
+import UserManagementPage from './pages/UserManagementPage';
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
+    <MotionConfig reducedMotion="user">
+      <BrowserRouter>
+        <AuthProvider>
         <SidebarProvider>
           <NotificationProvider>
             <TaskProvider>
@@ -40,6 +44,13 @@ export default function App() {
                 <Route element={<ProtectedRoute />}>
                   <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/unauthorized" element={<UnauthorizedPage />} />
+                  <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/users" element={
+                    <RoleRoute
+                      allowedRoles={[ROLES.SUPER_ADMIN]}
+                      element={<UserManagementPage />}
+                    />
+                  } />
 
                   {/* AI Operations — all roles */}
                   <Route path="/ai-operations" element={<AIOperationsPage />} />
@@ -102,5 +113,6 @@ export default function App() {
         </SidebarProvider>
       </AuthProvider>
     </BrowserRouter>
+  </MotionConfig>
   );
 }

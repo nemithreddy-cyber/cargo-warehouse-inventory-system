@@ -35,6 +35,21 @@ router.post(
 );
 
 router.get('/profile', authenticate, authController.getProfile);
+router.patch(
+  '/profile',
+  authenticate,
+  [
+    body('name').optional().trim().notEmpty().withMessage('Name cannot be empty'),
+    body('username').optional().trim().notEmpty().withMessage('Username cannot be empty'),
+    body('email').optional().isEmail().withMessage('Must be a valid email address'),
+    body('password')
+      .optional()
+      .isLength({ min: 6 })
+      .withMessage('Password must be at least 6 characters long'),
+    validate,
+  ],
+  authController.updateProfile
+);
 router.get('/check-users', authController.checkUsers);
 
 module.exports = router;

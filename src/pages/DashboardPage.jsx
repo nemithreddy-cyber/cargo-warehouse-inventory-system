@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -17,6 +18,20 @@ import { useAuth } from '../context/AuthContext';
 import { formatDate, getActivityColor, getActivityIcon } from '../utils/helpers';
 import { ROLES } from '../config/permissions';
 import api from '../utils/api';
+
+const containerVariants = {
+  hidden: {},
+  show: {
+    transition: {
+      staggerChildren: 0.08,
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 15 },
+  show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
+};
 
 
 // ─── Shared helpers ────────────────────────────────────────────
@@ -215,9 +230,22 @@ function SuperAdminDashboard({ navigate, notifications, data, alerts, suggestion
   return (
     <div className="space-y-6">
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-        {stats.map((s) => <DashboardCard key={s.title} {...s} />)}
-      </div>
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-7 gap-4"
+      >
+        {stats.map((s) => (
+          <motion.div
+            key={s.title}
+            variants={itemVariants}
+            className={s.title === 'Total Cargo' ? 'col-span-2 md:col-span-2' : ''}
+          >
+            <DashboardCard {...s} isLarge={s.title === 'Total Cargo'} />
+          </motion.div>
+        ))}
+      </motion.div>
 
       {/* Dynamic Rule-Based Alerts Panel */}
       <RuleAlertsPanel
@@ -324,9 +352,18 @@ function WarehouseStaffDashboard({ navigate, data }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {stats.map((s) => <DashboardCard key={s.title} {...s} />)}
-      </div>
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-2 md:grid-cols-4 gap-4"
+      >
+        {stats.map((s) => (
+          <motion.div key={s.title} variants={itemVariants}>
+            <DashboardCard {...s} />
+          </motion.div>
+        ))}
+      </motion.div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <AssignedTasksWidget myTasks={myTasks} navigate={navigate} />
         {/* Zone Occupancy */}
@@ -404,9 +441,22 @@ function OperationsStaffDashboard({ navigate, data }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {stats.map((s) => <DashboardCard key={s.title} {...s} />)}
-      </div>
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-4"
+      >
+        {stats.map((s) => (
+          <motion.div
+            key={s.title}
+            variants={itemVariants}
+            className={s.title === 'Total Cargo' ? 'col-span-2 md:col-span-2' : ''}
+          >
+            <DashboardCard {...s} isLarge={s.title === 'Total Cargo'} />
+          </motion.div>
+        ))}
+      </motion.div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <AssignedTasksWidget myTasks={myTasks} navigate={navigate} />
         {/* Active Dispatches */}
@@ -463,16 +513,31 @@ function DocumentationDashboard({ navigate, data }) {
   const dashboardStats = data;
   const recentCargo = cargoData.slice(0, 6);
 
+  const stats = [
+    { title: 'Total Cargo', value: dashboardStats.totalCargo, icon: FaBoxes, bgColor: 'bg-blue-50', color: 'text-blue-600', trend: 'up', trendValue: '12 items', onClick: () => navigate('/cargo') },
+    { title: 'Dispatched', value: dashboardStats.dispatchedCargo, icon: MdLocalShipping, bgColor: 'bg-orange-50', color: 'text-orange-600', trend: 'up', trendValue: 'in transit', onClick: () => navigate('/dispatch', { state: { status: 'Dispatched' } }) },
+    { title: 'Delivered', value: dashboardStats.deliveredCargo, icon: MdCheckCircle, bgColor: 'bg-green-50', color: 'text-green-600', trend: 'up', trendValue: 'complete', onClick: () => navigate('/reports') },
+    { title: 'Pending Docs', value: myTasks.filter((t) => t.status !== 'Completed').length, icon: MdAssignment, bgColor: 'bg-purple-50', color: 'text-purple-600', trend: 'neutral', trendValue: 'tasks' },
+  ];
+
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { title: 'Total Cargo', value: dashboardStats.totalCargo, icon: FaBoxes, bgColor: 'bg-blue-50', color: 'text-blue-600', trend: 'up', trendValue: '12 items', onClick: () => navigate('/cargo') },
-          { title: 'Dispatched', value: dashboardStats.dispatchedCargo, icon: MdLocalShipping, bgColor: 'bg-orange-50', color: 'text-orange-600', trend: 'up', trendValue: 'in transit', onClick: () => navigate('/dispatch', { state: { status: 'Dispatched' } }) },
-          { title: 'Delivered', value: dashboardStats.deliveredCargo, icon: MdCheckCircle, bgColor: 'bg-green-50', color: 'text-green-600', trend: 'up', trendValue: 'complete', onClick: () => navigate('/reports') },
-          { title: 'Pending Docs', value: myTasks.filter((t) => t.status !== 'Completed').length, icon: MdAssignment, bgColor: 'bg-purple-50', color: 'text-purple-600', trend: 'neutral', trendValue: 'tasks' },
-        ].map((s) => <DashboardCard key={s.title} {...s} />)}
-      </div>
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-4"
+      >
+        {stats.map((s) => (
+          <motion.div
+            key={s.title}
+            variants={itemVariants}
+            className={s.title === 'Total Cargo' ? 'col-span-2 md:col-span-2' : ''}
+          >
+            <DashboardCard {...s} isLarge={s.title === 'Total Cargo'} />
+          </motion.div>
+        ))}
+      </motion.div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <AssignedTasksWidget myTasks={myTasks} navigate={navigate} />
         <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
@@ -532,16 +597,31 @@ function AccountsDashboard({ navigate, data }) {
   const totalWeight = dashboardStats.totalWeight;
   const totalChargeableWeight = cargoData.reduce((s, c) => s + (c.chargeableWeight || 0), 0);
 
+  const stats = [
+    { title: 'Total Cargo', value: dashboardStats.totalCargo, icon: FaBoxes, bgColor: 'bg-blue-50', color: 'text-blue-600', trend: 'up', trendValue: '12 items', onClick: () => navigate('/cargo') },
+    { title: 'Total Weight', value: `${(totalWeight/1000).toFixed(1)}t`, icon: MdBarChart, bgColor: 'bg-purple-50', color: 'text-purple-600', trend: 'up', trendValue: 'kg managed' },
+    { title: 'Chargeable Wt.', value: `${(totalChargeableWeight/1000).toFixed(1)}t`, icon: MdReceipt, bgColor: 'bg-amber-50', color: 'text-amber-600', trend: 'up', trendValue: 'billable' },
+    { title: 'My Tasks', value: myTasks.filter((t) => t.status !== 'Completed').length, icon: MdAssignment, bgColor: 'bg-rose-50', color: 'text-rose-600', trend: 'neutral', trendValue: 'pending' },
+  ];
+
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { title: 'Total Cargo', value: dashboardStats.totalCargo, icon: FaBoxes, bgColor: 'bg-blue-50', color: 'text-blue-600', trend: 'up', trendValue: '12 items', onClick: () => navigate('/cargo') },
-          { title: 'Total Weight', value: `${(totalWeight/1000).toFixed(1)}t`, icon: MdBarChart, bgColor: 'bg-purple-50', color: 'text-purple-600', trend: 'up', trendValue: 'kg managed' },
-          { title: 'Chargeable Wt.', value: `${(totalChargeableWeight/1000).toFixed(1)}t`, icon: MdReceipt, bgColor: 'bg-amber-50', color: 'text-amber-600', trend: 'up', trendValue: 'billable' },
-          { title: 'My Tasks', value: myTasks.filter((t) => t.status !== 'Completed').length, icon: MdAssignment, bgColor: 'bg-rose-50', color: 'text-rose-600', trend: 'neutral', trendValue: 'pending' },
-        ].map((s) => <DashboardCard key={s.title} {...s} />)}
-      </div>
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-4"
+      >
+        {stats.map((s) => (
+          <motion.div
+            key={s.title}
+            variants={itemVariants}
+            className={s.title === 'Total Cargo' ? 'col-span-2 md:col-span-2' : ''}
+          >
+            <DashboardCard {...s} isLarge={s.title === 'Total Cargo'} />
+          </motion.div>
+        ))}
+      </motion.div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <AssignedTasksWidget myTasks={myTasks} navigate={navigate} />
         {/* Billing summary */}
@@ -693,7 +773,7 @@ export default function DashboardPage() {
       {/* Welcome Banner */}
       <div className={`bg-gradient-to-r ${bannerGradient} rounded-2xl p-6 text-white relative overflow-hidden shadow-sm`}>
         <div className="absolute inset-0 opacity-10">
-          <FaPlane className="absolute top-4 right-8 text-8xl rotate-45" />
+          <FaPlane className="absolute top-4 right-8 text-8xl rotate-45 animate-float-plane" />
         </div>
         <div className="relative">
           <h2 className="text-2xl font-bold mb-1">{getGreeting()}, {user?.name?.split(' ')[0]}! ✈️</h2>

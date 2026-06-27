@@ -57,7 +57,7 @@ const User = {
   },
 
   /** Update a user. */
-  update: async (id, { name, username, email, role, is_active }) => {
+  update: async (id, { name, username, email, role, is_active, password }) => {
     const fields = [];
     const values = [];
     if (name !== undefined)      { fields.push('name = ?');      values.push(name); }
@@ -65,6 +65,7 @@ const User = {
     if (email !== undefined)     { fields.push('email = ?');     values.push(email); }
     if (role !== undefined)      { fields.push('role = ?');      values.push(role); }
     if (is_active !== undefined) { fields.push('is_active = ?'); values.push(is_active); }
+    if (password !== undefined)  { fields.push('password = ?');  values.push(password); }
     if (!fields.length) return;
     await db.query(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`, [...values, id]);
   },

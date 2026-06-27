@@ -67,4 +67,37 @@ const getProfile = async (id) => {
   return user;
 };
 
-module.exports = { register, login, getProfile };
+/**
+ * Update authenticated user's profile.
+ */
+const updateProfile = async (id, { name, username, email, password }) => {
+  const existing = await User.findById(id);
+  if (!existing) throw createError('User not found.', 404);
+
+  if (username && username !== existing.username) {
+    const existingUsername = await User.findByUsername(username);
+    if (existingUsername) throw createError('An account with this username already exists.', 409);
+  }
+
+  if (email && email !== existing.email) {
+    const existingEmail = await User.findByEmail(email);
+    if (existingEmail) throw createError('An account with this email already exists.', 409);
+  }
+
+  let hashedPassword;
+  if (password) {
+    hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+  }
+
+  await User.update(id, { name, username, email, password: hashedPassword });
+
+  await ActivityLog.create({
+    user_id: id,
+    action: 'PROFILE_UPDATED',
+    description: `User "${name || existing.name}" updated their profile`,
+  });
+
+  return User.findById(id);
+};
+
+module.exports = { register, login, getProfile, updateProfile };

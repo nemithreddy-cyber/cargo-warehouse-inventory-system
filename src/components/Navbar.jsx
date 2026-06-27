@@ -159,10 +159,27 @@ export default function Navbar() {
           {dropdownOpen && (
             <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden z-50">
               <button
+                onClick={() => { navigate('/profile'); setDropdownOpen(false); }}
+                className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 w-full text-left transition-colors"
+              >
+                <MdPerson className="text-slate-500 text-lg" />
+                <span className="text-sm text-slate-700">My Profile</span>
+              </button>
+              {user?.role === 'Super Admin' && (
+                <button
+                  onClick={() => { navigate('/users'); setDropdownOpen(false); }}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 w-full text-left transition-colors"
+                >
+                  <MdSettings className="text-slate-500 text-lg" />
+                  <span className="text-sm text-slate-700">User Management</span>
+                </button>
+              )}
+              <div className="border-t border-slate-100"></div>
+              <button
                 onClick={handleLogout}
                 className="flex items-center gap-3 px-4 py-3 hover:bg-red-50 w-full text-left transition-colors"
               >
-                <MdLogout className="text-red-500" />
+                <MdLogout className="text-red-500 text-lg" />
                 <span className="text-sm text-red-600">Logout</span>
               </button>
             </div>

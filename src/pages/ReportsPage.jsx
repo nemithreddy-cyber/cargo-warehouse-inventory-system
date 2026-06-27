@@ -1,4 +1,5 @@
 import { useState, useEffect, useId } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
@@ -12,7 +13,27 @@ import { FaFilePdf, FaFileCsv } from 'react-icons/fa';
 import ToastContainer from '../components/ToastContainer';
 import { SkeletonChart, SkeletonPulse } from '../components/SkeletonLoader';
 import { useToast } from '../hooks/useToast';
+import useCountUp from '../hooks/useCountUp';
 import api from '../utils/api';
+
+function SummaryNum({ value, className }) {
+  const animated = useCountUp(value, 1200);
+  return <span className={className}>{animated}</span>;
+}
+
+const containerVariants = {
+  hidden: {},
+  show: {
+    transition: {
+      staggerChildren: 0.1,
+    }
+  }
+};
+
+const cardScaleVariants = {
+  hidden: { opacity: 0, scale: 0.95 },
+  show: { opacity: 1, scale: 1, transition: { duration: 0.25, ease: 'easeOut' } }
+};
 import {
   downloadCSV, printReport,
   CARGO_COLUMNS, DISPATCH_COLUMNS, WAREHOUSE_COLUMNS,
@@ -493,11 +514,17 @@ export default function ReportsPage() {
       {viewMode === 'dashboard' && (
         <>
           {/* Report Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6"
+          >
             {reportCards.map((r) => (
-              <div
+              <motion.div
+                variants={cardScaleVariants}
                 key={r.title}
-                className={`bg-white rounded-2xl border-2 ${r.borderColor} shadow-sm overflow-hidden hover:shadow-md transition-all duration-200 hover:-translate-y-0.5`}
+                className={`bg-white rounded-2xl border-2 ${r.borderColor} shadow-sm overflow-hidden hover-lift`}
               >
                 <div className={`${r.bg} px-6 py-5 flex items-center gap-4`}>
                   <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center">
@@ -513,7 +540,9 @@ export default function ReportsPage() {
                   <div className="grid grid-cols-3 gap-3 mb-4">
                     {r.stats.map((s) => (
                       <div key={s.label} className="text-center">
-                        <p className={`text-2xl font-bold ${r.color}`}>{s.value}</p>
+                        <p className={`text-2xl font-bold ${r.color}`}>
+                          <SummaryNum value={s.value} />
+                        </p>
                         <p className="text-xs text-slate-500">{s.label}</p>
                       </div>
                     ))}
@@ -533,9 +562,9 @@ export default function ReportsPage() {
                     </button>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
 
           {/* Monthly Trend Chart */}
           {loading ? (
@@ -575,21 +604,32 @@ export default function ReportsPage() {
                 </div>
               </div>
               <div className="p-6">
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={monthlyData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                    <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Bar
-                      dataKey={activeChart}
-                      name={chartKeys.find((c) => c.key === activeChart)?.label}
-                      fill={chartKeys.find((c) => c.key === activeChart)?.color}
-                      radius={[6, 6, 0, 0]}
-                      maxBarSize={48}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activeChart}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="w-full h-[280px]"
+                  >
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={monthlyData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                        <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Bar
+                          dataKey={activeChart}
+                          name={chartKeys.find((c) => c.key === activeChart)?.label}
+                          fill={chartKeys.find((c) => c.key === activeChart)?.color}
+                          radius={[6, 6, 0, 0]}
+                          maxBarSize={48}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </motion.div>
+                </AnimatePresence>
               </div>
             </div>
           )}

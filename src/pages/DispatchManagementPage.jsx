@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { MdLocalShipping, MdEdit, MdVisibility, MdAdd, MdClose, MdSearch } from 'react-icons/md';
 import StatusBadge from '../components/StatusBadge';
 import Modal from '../components/Modal';
@@ -9,7 +10,26 @@ import { SkeletonTable } from '../components/SkeletonLoader';
 import { formatDate } from '../utils/helpers';
 import { useToast } from '../hooks/useToast';
 import { useAuth } from '../context/AuthContext';
+import useCountUp from '../hooks/useCountUp';
 import api from '../utils/api';
+
+function SummaryNum({ value, className }) {
+  const animated = useCountUp(value, 1200);
+  return <span className={className}>{animated}</span>;
+}
+
+const rowVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: (i) => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      delay: i * 0.06,
+      duration: 0.25,
+      ease: 'easeOut',
+    },
+  }),
+};
 
 const statusFlow = ['Scheduled', 'In Transit', 'Delivered', 'Delayed', 'Cancelled'];
 
@@ -304,10 +324,10 @@ export default function DispatchManagementPage() {
   };
 
   const summaryStats = [
-    { label: 'Total Dispatched', value: records.length, color: 'bg-blue-50 text-blue-700' },
-    { label: 'In Transit', value: records.filter(r => r.status === 'In Transit').length, color: 'bg-amber-50 text-amber-700' },
-    { label: 'Delivered', value: records.filter(r => r.status === 'Delivered').length, color: 'bg-green-50 text-green-700' },
-    { label: 'Pending/Scheduled', value: records.filter(r => r.status === 'Scheduled' || r.status === 'Pending').length, color: 'bg-slate-50 text-slate-700' },
+    { label: 'Total Dispatched', value: records.length, color: 'text-blue-700', bg: 'bg-blue-50 border border-blue-100 hover-lift' },
+    { label: 'In Transit', value: records.filter(r => r.status === 'In Transit').length, color: 'text-amber-700', bg: 'bg-amber-50 border border-amber-100 hover-lift' },
+    { label: 'Delivered', value: records.filter(r => r.status === 'Delivered').length, color: 'text-green-700', bg: 'bg-green-50 border border-green-100 hover-lift' },
+    { label: 'Pending/Scheduled', value: records.filter(r => r.status === 'Scheduled' || r.status === 'Pending').length, color: 'text-slate-600', bg: 'bg-slate-50 border border-slate-200/60 hover-lift' },
   ];
 
   return (
@@ -325,7 +345,10 @@ export default function DispatchManagementPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-800">Dispatch Management</h2>
+          <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+            <MdLocalShipping className="text-blue-600 animate-truck-slide text-2xl flex-shrink-0" />
+            <span>Dispatch Management</span>
+          </h2>
           <p className="text-slate-500 text-sm">Track and manage cargo dispatch operations</p>
         </div>
         {canCreate && (
@@ -343,9 +366,9 @@ export default function DispatchManagementPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {summaryStats.map((s) => (
-          <div key={s.label} className={`${s.color.split(' ')[0]} rounded-2xl p-4 text-center`}>
-            <p className={`text-3xl font-bold ${s.color.split(' ')[1]}`}>{s.value}</p>
-            <p className="text-slate-600 text-sm mt-1">{s.label}</p>
+          <div key={s.label} className={`${s.bg} rounded-2xl p-5 text-center shadow-sm`}>
+            <SummaryNum value={s.value} className={`text-4xl md:text-5xl font-extrabold block ${s.color}`} />
+            <p className="text-slate-600 text-sm mt-2 font-medium">{s.label}</p>
           </div>
         ))}
       </div>
@@ -381,12 +404,12 @@ export default function DispatchManagementPage() {
             <h3 className="font-semibold text-slate-800">Dispatch Records</h3>
             <span className="text-xs text-slate-500">{filtered.length} records</span>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+            <table className="w-full relative border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100">
                   {['Dispatch ID', 'Cargo ID', 'Customer', 'Destination', 'Vehicle', 'Driver', 'Dispatch Date', 'Est. Delivery', 'Status', 'Actions'].map((h) => (
-                    <th key={h} className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3.5">{h}</th>
+                    <th key={h} className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3.5 bg-slate-50 sticky top-0 z-10 shadow-[inset_0_-1px_0_0_#e2e8f0]">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -405,8 +428,21 @@ export default function DispatchManagementPage() {
                       </div>
                     </td>
                   </tr>
-                ) : filtered.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-50 transition-colors group">
+                ) : filtered.map((r, i) => (
+                  <motion.tr
+                    key={r.id}
+                    custom={i}
+                    initial="hidden"
+                    animate="visible"
+                    variants={rowVariants}
+                    className={`hover:bg-slate-100/60 transition-colors duration-150 group cursor-pointer border-l-4 ${
+                      r.status === 'Delivered' ? 'border-l-green-500' :
+                      r.status === 'In Transit' ? 'border-l-blue-500' :
+                      r.status === 'Delayed' ? 'border-l-amber-500' :
+                      r.status === 'Cancelled' ? 'border-l-red-500' : 'border-l-slate-300'
+                    }`}
+                    onClick={() => setSelectedRecord(r)}
+                  >
                     <td className="px-5 py-4 font-mono text-sm font-bold text-blue-600">{r.id}</td>
                     <td className="px-5 py-4 text-sm font-semibold text-slate-700">{r.cargoId}</td>
                     <td className="px-5 py-4 text-sm text-slate-600">{r.customerName}</td>
@@ -416,7 +452,7 @@ export default function DispatchManagementPage() {
                     <td className="px-5 py-4 text-sm text-slate-500">{formatDate(r.dispatchDate)}</td>
                     <td className="px-5 py-4 text-sm text-slate-500">{formatDate(r.estimatedDelivery)}</td>
                     <td className="px-5 py-4"><StatusBadge status={r.status} /></td>
-                    <td className="px-5 py-4">
+                    <td className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
                         <button onClick={() => setSelectedRecord(r)}
                           className="p-2 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors" title="View">
@@ -430,7 +466,7 @@ export default function DispatchManagementPage() {
                         )}
                       </div>
                     </td>
-                  </tr>
+                  </motion.tr>
                 ))}
               </tbody>
             </table>

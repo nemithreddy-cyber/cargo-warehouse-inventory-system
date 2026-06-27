@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { 
   MdMessage, MdSend, MdSmartphone, MdEmail, MdRefresh, 
   MdDoneAll, MdError, MdSchedule, MdFilterList, MdSearch, 
@@ -7,6 +8,39 @@ import {
 import api from '../utils/api';
 import ToastContainer from '../components/ToastContainer';
 import { useToast } from '../hooks/useToast';
+import useCountUp from '../hooks/useCountUp';
+
+function SummaryNum({ value, className }) {
+  const animated = useCountUp(value, 1200);
+  return <span className={className}>{animated}</span>;
+}
+
+const containerVariants = {
+  hidden: {},
+  show: {
+    transition: {
+      staggerChildren: 0.08,
+    }
+  }
+};
+
+const cardScaleVariants = {
+  hidden: { opacity: 0, scale: 0.95 },
+  show: { opacity: 1, scale: 1, transition: { duration: 0.25, ease: 'easeOut' } }
+};
+
+const rowVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: (i) => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      delay: i * 0.05,
+      duration: 0.25,
+      ease: 'easeOut',
+    },
+  }),
+};
 
 export default function MessagingSimulatorPage() {
   const { toasts, success, error, removeToast } = useToast();
@@ -167,55 +201,68 @@ export default function MessagingSimulatorPage() {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-2 md:grid-cols-4 gap-4"
+      >
         {/* Total */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
+        <motion.div variants={cardScaleVariants} className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm hover-lift">
           <div className="flex justify-between items-center">
             <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Total</span>
             <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
               <MdMessage className="text-lg" />
             </div>
           </div>
-          <h4 className="text-2xl font-bold text-slate-800 mt-2">{stats.total}</h4>
+          <h4 className="text-2xl font-bold text-slate-800 mt-2">
+            <SummaryNum value={stats.total} />
+          </h4>
           <p className="text-[10px] text-slate-400 mt-1">Dispatches logged</p>
-        </div>
+        </motion.div>
 
         {/* Email */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
+        <motion.div variants={cardScaleVariants} className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm hover-lift">
           <div className="flex justify-between items-center">
             <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Emails</span>
             <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
               <MdEmail className="text-lg" />
             </div>
           </div>
-          <h4 className="text-2xl font-bold text-slate-800 mt-2">{stats.email}</h4>
+          <h4 className="text-2xl font-bold text-slate-800 mt-2">
+            <SummaryNum value={stats.email} />
+          </h4>
           <p className="text-[10px] text-slate-400 mt-1">Sent via SMTP server</p>
-        </div>
+        </motion.div>
 
         {/* Failed */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
+        <motion.div variants={cardScaleVariants} className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm hover-lift">
           <div className="flex justify-between items-center">
             <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Failed</span>
             <div className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center">
               <MdError className="text-lg" />
             </div>
           </div>
-          <h4 className="text-2xl font-bold text-red-600 mt-2">{stats.failed}</h4>
+          <h4 className="text-2xl font-bold text-red-650 mt-2">
+            <SummaryNum value={stats.failed} />
+          </h4>
           <p className="text-[10px] text-slate-400 mt-1">Errors logged</p>
-        </div>
+        </motion.div>
 
         {/* Pending */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
+        <motion.div variants={cardScaleVariants} className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm hover-lift">
           <div className="flex justify-between items-center">
             <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Pending</span>
             <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
               <MdSchedule className="text-lg" />
             </div>
           </div>
-          <h4 className="text-2xl font-bold text-amber-600 mt-2">{stats.pending}</h4>
+          <h4 className="text-2xl font-bold text-amber-600 mt-2">
+            <SummaryNum value={stats.pending} />
+          </h4>
           <p className="text-[10px] text-slate-400 mt-1">Queued for retry</p>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* Main Grid View */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -287,7 +334,7 @@ export default function MessagingSimulatorPage() {
             <button
               type="submit"
               disabled={sending}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-450 text-white rounded-xl py-2.5 font-medium text-xs transition-all shadow-sm flex items-center justify-center gap-2"
+              className="w-full bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white rounded-xl py-2.5 font-bold text-xs shadow-md shadow-red-500/10 flex items-center justify-center gap-2 ripple-btn transition-colors"
             >
               {sending ? (
                 <>
@@ -422,7 +469,7 @@ export default function MessagingSimulatorPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 text-xs">
-                  {messages.map((msg) => {
+                  {messages.map((msg, i) => {
                     const recipientLabel = msg.recipient_name;
                     const recipientAddr = msg.channel === 'whatsapp' ? msg.phone_number : msg.email;
                     const channelName = msg.channel || (msg.type?.toLowerCase());
@@ -439,10 +486,14 @@ export default function MessagingSimulatorPage() {
                     }
 
                     return (
-                      <tr 
+                      <motion.tr 
                         key={msg.id} 
+                        custom={i}
+                        initial="hidden"
+                        animate="visible"
+                        variants={rowVariants}
                         onClick={() => setSelectedMessage(msg)}
-                        className="hover:bg-slate-50/50 transition-colors cursor-pointer"
+                        className="hover:bg-slate-50/50 transition-colors cursor-pointer border-l-2 border-l-transparent hover:border-l-blue-500"
                       >
                         <td className="py-2.5 px-2 max-w-[120px] truncate">
                           <p className="font-semibold text-slate-800">{recipientLabel}</p>
@@ -491,7 +542,7 @@ export default function MessagingSimulatorPage() {
                             </button>
                           </div>
                         </td>
-                      </tr>
+                      </motion.tr>
                     );
                   })}
                 </tbody>

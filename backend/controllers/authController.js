@@ -41,4 +41,14 @@ const checkUsers = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, getProfile, checkUsers };
+const updateProfile = async (req, res, next) => {
+  try {
+    const { name, username, email, password } = req.body;
+    const result = await authService.updateProfile(req.user.id, { name, username, email, password });
+    success(res, { user: result }, 'Profile updated successfully', 200);
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { register, login, getProfile, checkUsers, updateProfile };

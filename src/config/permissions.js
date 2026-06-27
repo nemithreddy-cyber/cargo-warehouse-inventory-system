@@ -5,7 +5,7 @@
 
 import {
   MdDashboard, MdInventory, MdWarehouse, MdLocalShipping,
-  MdAssessment, MdAdd, MdSmartToy, MdMessage
+  MdAssessment, MdAdd, MdSmartToy, MdMessage, MdSettings, MdPerson
 } from 'react-icons/md';
 import { FaPlaneArrival } from 'react-icons/fa';
 
@@ -102,6 +102,8 @@ const ALL_NAV = {
   reports:      { to: '/reports',      icon: MdAssessment,     label: 'Reports',          group: 'core' },
   aiOperations: { to: '/ai-operations',icon: MdSmartToy,       label: 'AI Operations',    group: 'core' },
   messaging:    { to: '/messaging',     icon: MdMessage,        label: 'Messaging Center', group: 'core' },
+  users:        { to: '/users',        icon: MdSettings,       label: 'User Management',  group: 'extra' },
+  profile:      { to: '/profile',      icon: MdPerson,         label: 'My Profile',       group: 'extra' },
 };
 
 const roleNavConfig = {
@@ -109,26 +111,31 @@ const roleNavConfig = {
     ALL_NAV.dashboard, ALL_NAV.cargo, ALL_NAV.addCargo,
     ALL_NAV.warehouse, ALL_NAV.dispatch, ALL_NAV.reports,
     ALL_NAV.aiOperations, ALL_NAV.messaging,
+    ALL_NAV.users, ALL_NAV.profile,
   ],
   [ROLES.WAREHOUSE_STAFF]: [
     ALL_NAV.dashboard, ALL_NAV.cargo, ALL_NAV.addCargo,
     ALL_NAV.warehouse, ALL_NAV.dispatch,
     ALL_NAV.aiOperations, ALL_NAV.messaging,
+    ALL_NAV.profile,
   ],
   [ROLES.OPERATIONS_STAFF]: [
     ALL_NAV.dashboard, ALL_NAV.cargo, ALL_NAV.addCargo,
     ALL_NAV.dispatch, ALL_NAV.reports,
     ALL_NAV.aiOperations, ALL_NAV.messaging,
+    ALL_NAV.profile,
   ],
   [ROLES.DOCUMENTATION_EXEC]: [
     ALL_NAV.dashboard, ALL_NAV.cargo,
     ALL_NAV.reports,
     ALL_NAV.aiOperations, ALL_NAV.messaging,
+    ALL_NAV.profile,
   ],
   [ROLES.ACCOUNTS_STAFF]: [
     ALL_NAV.dashboard, ALL_NAV.cargo,
     ALL_NAV.reports,
     ALL_NAV.aiOperations, ALL_NAV.messaging,
+    ALL_NAV.profile,
   ],
 };
 

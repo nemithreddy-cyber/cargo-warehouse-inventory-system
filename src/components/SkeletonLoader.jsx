@@ -2,7 +2,7 @@ import React from 'react';
 
 export const SkeletonPulse = ({ className = '', ...props }) => (
   <div
-    className={`bg-slate-200 animate-pulse rounded ${className}`}
+    className={`skeleton-shimmer rounded ${className}`}
     {...props}
   />
 );

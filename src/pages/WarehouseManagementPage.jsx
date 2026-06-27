@@ -1,11 +1,45 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { MdAdd, MdWarehouse, MdLocationOn, MdAssignment } from 'react-icons/md';
 import StatusBadge from '../components/StatusBadge';
 import Modal from '../components/Modal';
 import ToastContainer from '../components/ToastContainer';
 import { SkeletonCard, SkeletonPulse } from '../components/SkeletonLoader';
 import { useToast } from '../hooks/useToast';
+import useCountUp from '../hooks/useCountUp';
 import api from '../utils/api';
+
+function SummaryNum({ value, className }) {
+  const animated = useCountUp(value, 1200);
+  return <span className={className}>{animated}</span>;
+}
+
+const zoneContainerVariants = {
+  hidden: {},
+  show: {
+    transition: {
+      staggerChildren: 0.1,
+    }
+  }
+};
+
+const zoneCardVariants = {
+  hidden: { opacity: 0, x: -30 },
+  show: { opacity: 1, x: 0, transition: { type: 'spring', stiffness: 200, damping: 20 } }
+};
+
+const slotVariants = {
+  hidden: { opacity: 0, scale: 0.9 },
+  visible: (i) => ({
+    opacity: 1,
+    scale: 1,
+    transition: {
+      delay: i * 0.04,
+      duration: 0.25,
+      ease: 'easeOut',
+    }
+  })
+};
 
 export default function WarehouseManagementPage() {
   const [loading, setLoading] = useState(true);
@@ -188,16 +222,22 @@ export default function WarehouseManagementPage() {
       </div>
 
       {/* Zone Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <motion.div
+        variants={zoneContainerVariants}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4"
+      >
         {loading && Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)}
         {!loading && warehouseZones.map((zone) => {
           const pct = Math.round((zone.occupiedLocations / zone.totalLocations) * 100);
           const loadPct = Math.round((zone.currentLoad / zone.maxCapacity) * 100);
           return (
-            <div
+            <motion.div
+              variants={zoneCardVariants}
               key={zone.id}
               onClick={() => setActiveZone(zone.name === activeZone ? 'All' : zone.name)}
-              className={`bg-white rounded-2xl border-2 p-5 cursor-pointer hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 ${activeZone === zone.name ? 'border-blue-500 shadow-md' : 'border-slate-100'}`}
+              className={`bg-white rounded-2xl border-2 py-7 px-5 cursor-pointer hover-lift ${activeZone === zone.name ? 'border-blue-500 shadow-md' : 'border-slate-100'}`}
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-lg" style={{ backgroundColor: zone.color }}>
@@ -207,8 +247,14 @@ export default function WarehouseManagementPage() {
               </div>
               <h4 className="font-bold text-slate-800 mb-1">{zone.name}</h4>
               <p className="text-xs text-slate-500 mb-3 leading-tight">{zone.description}</p>
-              <div className="w-full bg-slate-100 rounded-full h-2 mb-2">
-                <div className="h-2 rounded-full transition-all duration-700" style={{ width: `${pct}%`, backgroundColor: zone.color }}></div>
+              <div className="w-full bg-slate-100 rounded-full h-2 mb-2 overflow-hidden">
+                <motion.div
+                  initial={{ width: '0%' }}
+                  animate={{ width: `${pct}%` }}
+                  transition={{ duration: 1, ease: 'easeOut' }}
+                  className="h-2 rounded-full"
+                  style={{ backgroundColor: zone.color }}
+                />
               </div>
               <div className="flex justify-between text-xs text-slate-500">
                 <span>{zone.occupiedLocations} occupied</span>
@@ -218,10 +264,10 @@ export default function WarehouseManagementPage() {
                 <p className="text-xs text-slate-400">{zone.temperature}</p>
                 <p className="text-xs text-slate-500 font-medium">{zone.currentLoad.toLocaleString()} / {zone.maxCapacity.toLocaleString()} kg</p>
               </div>
-            </div>
+            </motion.div>
           );
         })}
-      </div>
+      </motion.div>
 
       {/* Summary Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -231,9 +277,9 @@ export default function WarehouseManagementPage() {
           { label: 'Available', value: storageLocations.filter(l => l.status === 'Available').length, color: 'text-green-600', bg: 'bg-green-50' },
           { label: 'Maintenance', value: storageLocations.filter(l => l.status === 'Maintenance').length, color: 'text-amber-600', bg: 'bg-amber-50' },
         ].map((s) => (
-          <div key={s.label} className={`${s.bg} rounded-2xl p-4 text-center`}>
-            <p className={`text-3xl font-bold ${s.color}`}>{s.value}</p>
-            <p className="text-slate-600 text-sm mt-1">{s.label}</p>
+          <div key={s.label} className={`${s.bg} rounded-2xl p-5 text-center hover-lift border border-slate-100 shadow-sm`}>
+            <SummaryNum value={s.value} className={`text-4xl md:text-5xl font-extrabold block ${s.color}`} />
+            <p className="text-slate-600 text-sm mt-2 font-medium">{s.label}</p>
           </div>
         ))}
       </div>
@@ -262,9 +308,13 @@ export default function WarehouseManagementPage() {
         </div>
 
         <div className="p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3">
-          {filteredLocations.map((loc) => (
-            <div
+          {filteredLocations.map((loc, i) => (
+            <motion.div
               key={loc.id}
+              custom={i}
+              initial="hidden"
+              animate="visible"
+              variants={slotVariants}
               onClick={() => handleOpenLocation(loc)}
               className={`rounded-xl p-3 cursor-pointer transition-all duration-200 hover:scale-105 hover:shadow-md border-2 ${
                 loc.status === 'Occupied' ? 'bg-red-50 border-red-200 hover:border-red-400' :
@@ -281,7 +331,7 @@ export default function WarehouseManagementPage() {
                 {loc.status}
               </p>
               {loc.cargoId && <p className="text-xs text-slate-400 mt-0.5 truncate">{loc.cargoId}</p>}
-            </div>
+            </motion.div>
           ))}
         </div>
 

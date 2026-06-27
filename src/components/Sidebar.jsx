@@ -1,4 +1,5 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
 import { MdLogout, MdClose } from 'react-icons/md';
 import OrbemLogo from './OrbemLogo';
@@ -29,15 +30,30 @@ export default function Sidebar() {
         to={to}
         onClick={closeMobileSidebar}
         className={({ isActive }) =>
-          `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group w-full ${
+          `relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors duration-200 group w-full ${
             isActive
-              ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30'
+              ? 'text-white font-bold z-10'
               : 'text-blue-200 hover:bg-white/10 hover:text-white'
           }`
         }
       >
-        <Icon className="text-lg flex-shrink-0" />
-        <span className="flex-1 text-left">{label}</span>
+        {({ isActive }) => (
+          <>
+            {isActive && (
+              <motion.div
+                layoutId="activeSidebarHighlight"
+                className="absolute inset-0 bg-amber-500 rounded-xl shadow-lg shadow-amber-500/30 -z-10"
+                transition={{
+                  type: 'spring',
+                  stiffness: 380,
+                  damping: 30,
+                }}
+              />
+            )}
+            <Icon className="text-lg flex-shrink-0" />
+            <span className="flex-1 text-left">{label}</span>
+          </>
+        )}
       </NavLink>
     </li>
   );

@@ -1,6 +1,30 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { MdAdd, MdEdit, MdDelete, MdVisibility } from 'react-icons/md';
+
+const leftBorderMap = {
+  'Received': 'border-l-4 border-l-blue-500',
+  'Stored': 'border-l-4 border-l-purple-500',
+  'Ready for Dispatch': 'border-l-4 border-l-amber-500',
+  'Ready For Dispatch': 'border-l-4 border-l-amber-500',
+  'Dispatched': 'border-l-4 border-l-orange-500',
+  'Delivered': 'border-l-4 border-l-green-500',
+  'In Transit': 'border-l-4 border-l-cyan-500',
+};
+
+const rowVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: (i) => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      delay: i * 0.06,
+      duration: 0.25,
+      ease: 'easeOut',
+    },
+  }),
+};
 import StatusBadge from '../components/StatusBadge';
 import SearchBar from '../components/SearchBar';
 import FilterSelect from '../components/FilterSelect';
@@ -172,19 +196,19 @@ export default function CargoListPage() {
         <SkeletonTable cols={9} rows={8} />
       ) : (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto max-h-[550px] overflow-y-auto">
+            <table className="w-full relative border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100">
-                  <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3.5">Cargo ID</th>
-                  <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3.5">Customer</th>
-                  <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3.5">Type</th>
-                  <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3.5">Packages</th>
-                  <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3.5">Weight</th>
-                  <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3.5">Location</th>
-                  <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3.5">Arrival</th>
-                  <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3.5">Status</th>
-                  <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3.5">Actions</th>
+                  <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3.5 bg-slate-50 sticky top-0 z-10 shadow-[inset_0_-1px_0_0_#e2e8f0]">Cargo ID</th>
+                  <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3.5 bg-slate-50 sticky top-0 z-10 shadow-[inset_0_-1px_0_0_#e2e8f0]">Customer</th>
+                  <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3.5 bg-slate-50 sticky top-0 z-10 shadow-[inset_0_-1px_0_0_#e2e8f0]">Type</th>
+                  <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3.5 bg-slate-50 sticky top-0 z-10 shadow-[inset_0_-1px_0_0_#e2e8f0] text-center">Packages</th>
+                  <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3.5 bg-slate-50 sticky top-0 z-10 shadow-[inset_0_-1px_0_0_#e2e8f0]">Weight</th>
+                  <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3.5 bg-slate-50 sticky top-0 z-10 shadow-[inset_0_-1px_0_0_#e2e8f0]">Location</th>
+                  <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3.5 bg-slate-50 sticky top-0 z-10 shadow-[inset_0_-1px_0_0_#e2e8f0]">Arrival</th>
+                  <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3.5 bg-slate-50 sticky top-0 z-10 shadow-[inset_0_-1px_0_0_#e2e8f0]">Status</th>
+                  <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-5 py-3.5 bg-slate-50 sticky top-0 z-10 shadow-[inset_0_-1px_0_0_#e2e8f0]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
@@ -210,8 +234,16 @@ export default function CargoListPage() {
                       </div>
                     </td>
                   </tr>
-                ) : data.map((c) => (
-                  <tr key={c.id} className="hover:bg-slate-50 transition-colors group">
+                ) : data.map((c, i) => (
+                  <motion.tr
+                    key={c.id}
+                    custom={i}
+                    initial="hidden"
+                    animate="visible"
+                    variants={rowVariants}
+                    className={`hover:bg-slate-100/60 transition-colors duration-150 group cursor-pointer ${leftBorderMap[c.status] || 'border-l-4 border-l-slate-200'}`}
+                    onClick={() => navigate(`/cargo/${c.id}`)}
+                  >
                     <td className="px-5 py-4">
                       <span className="font-mono text-sm font-semibold text-blue-600">{c.id}</span>
                     </td>
@@ -234,7 +266,7 @@ export default function CargoListPage() {
                     <td className="px-5 py-4">
                       <StatusBadge status={c.status} />
                     </td>
-                    <td className="px-5 py-4">
+                    <td className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => navigate(`/cargo/${c.id}`)}
@@ -263,7 +295,7 @@ export default function CargoListPage() {
                         )}
                       </div>
                     </td>
-                  </tr>
+                  </motion.tr>
                 ))}
               </tbody>
             </table>

@@ -1,8 +1,23 @@
 import { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
 import * as MdIcons from 'react-icons/md';
 import api from '../utils/api';
 import ToastContainer from '../components/ToastContainer';
 import { useToast } from '../hooks/useToast';
+
+const quoteSidebarVariants = {
+  hidden: { opacity: 0, x: 50 },
+  visible: (i) => ({
+    opacity: 1,
+    x: 0,
+    transition: {
+      delay: i * 0.08,
+      type: 'spring',
+      stiffness: 260,
+      damping: 25,
+    }
+  })
+};
 
 // ─── Inline Form Components for Chat ──────────────────────────────────────────
 
@@ -1173,11 +1188,14 @@ Could you please select one of the quick actions below to open a form? 👇`);
             {messages.map((msg) => {
               const isBot = msg.sender === 'bot';
               return (
-                <div
+                <motion.div
                   key={msg.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, ease: 'easeOut' }}
                   className={`flex gap-3 max-w-[85%] ${
                     isBot ? 'mr-auto' : 'ml-auto flex-row-reverse'
-                  } animate-in fade-in slide-in-from-bottom-2 duration-250`}
+                  }`}
                 >
                   {/* Avatar */}
                   <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 font-bold ${
@@ -1394,7 +1412,7 @@ Could you please select one of the quick actions below to open a form? 👇`);
                       {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
 
@@ -1404,10 +1422,10 @@ Could you please select one of the quick actions below to open a form? 👇`);
                 <div className="w-8 h-8 rounded-xl bg-blue-650 text-white flex items-center justify-center flex-shrink-0 font-bold">
                   <MdIcons.MdSmartToy />
                 </div>
-                <div className="bg-slate-850 text-slate-400 p-4 rounded-2xl rounded-tl-sm border border-slate-800/80 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" />
-                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.4s]" />
+                <div className="bg-slate-850 text-slate-400 p-4 rounded-2xl rounded-tl-sm border border-slate-800/80 flex items-center gap-1.5">
+                  <span className="bounce-dot text-slate-400" />
+                  <span className="bounce-dot text-slate-400" />
+                  <span className="bounce-dot text-slate-400" />
                 </div>
               </div>
             )}
@@ -1420,49 +1438,49 @@ Could you please select one of the quick actions below to open a form? 👇`);
             <div className="flex gap-2 overflow-x-auto py-1 scrollbar-none">
               <button
                 onClick={() => handleActionClick('quote')}
-                className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all"
+                className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shine-hover"
               >
                 📋 Generate Quote
               </button>
               <button
                 onClick={() => handleActionClick('customs')}
-                className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all"
+                className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shine-hover"
               >
                 🛃 Customs Check
               </button>
               <button
                 onClick={() => handleActionClick('cleaner')}
-                className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all"
+                className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shine-hover"
               >
                 ✨ Clean Description
               </button>
               <button
                 onClick={() => handleActionClick('routes')}
-                className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all"
+                className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shine-hover"
               >
                 🗺️ Route Recommend
               </button>
               <button
                 onClick={() => handleActionClick('claim')}
-                className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all"
+                className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shine-hover"
               >
                 🛡️ Submit Claim
               </button>
               <button
                 onClick={() => handleActionClick('rates')}
-                className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all"
+                className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shine-hover"
               >
                 ✈️ Compare Rates
               </button>
               <button
                 onClick={() => handleActionClick('complaint')}
-                className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all"
+                className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shine-hover"
               >
                 💬 File Complaint
               </button>
               <button
                 onClick={() => handleActionClick('insights')}
-                className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all"
+                className="flex-shrink-0 bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shine-hover"
               >
                 📊 System Insights
               </button>
@@ -1523,8 +1541,15 @@ Could you please select one of the quick actions below to open a form? 👇`);
                   quotes.length === 0 ? (
                     <p className="text-xs text-slate-400 text-center py-8">No quotations generated yet.</p>
                   ) : (
-                    quotes.map(q => (
-                      <div key={q.id} className="bg-slate-50 border border-slate-150 p-3.5 rounded-2xl space-y-2">
+                    quotes.map((q, i) => (
+                      <motion.div
+                        key={q.id}
+                        custom={i}
+                        variants={quoteSidebarVariants}
+                        initial="hidden"
+                        animate="visible"
+                        className="bg-slate-50 border border-slate-150 p-3.5 rounded-2xl space-y-2 hover-lift"
+                      >
                         <div className="flex justify-between items-center">
                           <span className="font-mono text-xs font-bold text-slate-800">{q.quote_id}</span>
                           <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
@@ -1547,7 +1572,7 @@ Could you please select one of the quick actions below to open a form? 👇`);
                             Approve Quote
                           </button>
                         )}
-                      </div>
+                      </motion.div>
                     ))
                   )
                 )}
@@ -1557,8 +1582,15 @@ Could you please select one of the quick actions below to open a form? 👇`);
                   claims.length === 0 ? (
                     <p className="text-xs text-slate-400 text-center py-8">No claims submitted yet.</p>
                   ) : (
-                    claims.map(c => (
-                      <div key={c.id} className="bg-slate-50 border border-slate-150 p-3.5 rounded-2xl space-y-2">
+                    claims.map((c, i) => (
+                      <motion.div
+                        key={c.id}
+                        custom={i}
+                        variants={quoteSidebarVariants}
+                        initial="hidden"
+                        animate="visible"
+                        className="bg-slate-50 border border-slate-150 p-3.5 rounded-2xl space-y-2 hover-lift"
+                      >
                         <div className="flex justify-between items-center">
                           <span className="font-mono text-xs font-bold text-slate-800">{c.claim_id}</span>
                           <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
@@ -1580,7 +1612,7 @@ Could you please select one of the quick actions below to open a form? 👇`);
                             Approve Claim
                           </button>
                         )}
-                      </div>
+                      </motion.div>
                     ))
                   )
                 )}
@@ -1590,8 +1622,15 @@ Could you please select one of the quick actions below to open a form? 👇`);
                   complaints.length === 0 ? (
                     <p className="text-xs text-slate-400 text-center py-8">No complaints registered yet.</p>
                   ) : (
-                    complaints.map(c => (
-                      <div key={c.id} className="bg-slate-50 border border-slate-150 p-3.5 rounded-2xl space-y-2">
+                    complaints.map((c, i) => (
+                      <motion.div
+                        key={c.id}
+                        custom={i}
+                        variants={quoteSidebarVariants}
+                        initial="hidden"
+                        animate="visible"
+                        className="bg-slate-50 border border-slate-150 p-3.5 rounded-2xl space-y-2 hover-lift"
+                      >
                         <div className="flex justify-between items-center">
                           <span className="font-mono text-xs font-bold text-slate-800">{c.complaint_id}</span>
                           <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
@@ -1613,7 +1652,7 @@ Could you please select one of the quick actions below to open a form? 👇`);
                             Resolve Complaint
                           </button>
                         )}
-                      </div>
+                      </motion.div>
                     ))
                   )
                 )}
