@@ -79,7 +79,8 @@ export default function PickupSchedulerPage() {
   const fetchCargoList = async () => {
     try {
       const res = await api.get('/cargo');
-      const list = res.data.data?.cargo || res.data.cargo || [];
+      const rawList = res.data.data || [];
+      const list = Array.isArray(rawList) ? rawList : (rawList.cargo || res.data.cargo || []);
       // Filter for 'Ready For Dispatch' status
       const readyCargo = list.filter(c => c.status === 'Ready For Dispatch' || c.status === 'Received' || c.status === 'Stored');
       setCargoList(readyCargo);

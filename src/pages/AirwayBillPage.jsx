@@ -68,8 +68,8 @@ export default function AirwayBillPage() {
   const fetchCargoList = async () => {
     try {
       const res = await api.get('/cargo');
-      // API might wrap list in different places depending on version
-      const list = res.data.data?.cargo || res.data.cargo || [];
+      const rawList = res.data.data || [];
+      const list = Array.isArray(rawList) ? rawList : (rawList.cargo || res.data.cargo || []);
       setCargoList(list);
     } catch (err) {
       console.error(err);
