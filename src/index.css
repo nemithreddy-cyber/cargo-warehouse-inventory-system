@@ -256,4 +256,106 @@ input:focus, select:focus, textarea:focus {
   .recharts-bar-rectangle:nth-child(8) path { animation-delay: 420ms; }
 }
 
+/* 12. Login Page Antigravity Animations */
+@keyframes floatParticle {
+  0% {
+    transform: translateY(105vh) translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: var(--particle-opacity);
+  }
+  90% {
+    opacity: var(--particle-opacity);
+  }
+  100% {
+    transform: translateY(-5vh) translateX(var(--particle-drift));
+    opacity: 0;
+  }
+}
+
+@keyframes driftOrb1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(30px, -50px) scale(1.1); }
+}
+@keyframes driftOrb2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-40px, 30px) scale(0.95); }
+}
+@keyframes driftOrb3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(50px, 40px) scale(1.05); }
+}
+
+@keyframes logoFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes spinOnce {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes slowRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulseButton {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+/* Loop animations with accessibility toggle */
+@media (prefers-reduced-motion: no-preference) {
+  .animate-particle {
+    animation: floatParticle var(--particle-duration) linear infinite;
+  }
+  .animate-drift-orb-1 {
+    animation: driftOrb1 15s ease-in-out infinite;
+  }
+  .animate-drift-orb-2 {
+    animation: driftOrb2 20s ease-in-out infinite;
+  }
+  .animate-drift-orb-3 {
+    animation: driftOrb3 18s ease-in-out infinite;
+  }
+  .animate-logo-float {
+    animation: logoFloat 3s ease-in-out infinite;
+  }
+  .animate-halo-rotate {
+    animation: slowRotate 8s linear infinite;
+  }
+  .animate-btn-pulse {
+    animation: pulseButton 2.5s ease-in-out infinite;
+  }
+}
+
+/* Fallback for static elements when motion is reduced */
+@media (prefers-reduced-motion: reduce) {
+  .animate-particle {
+    display: none;
+  }
+  .animate-logo-float, .animate-halo-rotate, .animate-btn-pulse, .animate-drift-orb-1, .animate-drift-orb-2, .animate-drift-orb-3 {
+    animation: none !important;
+  }
+}
+
+.animate-logo-spin {
+  animation: spinOnce 800ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Thin glowing border that brightens on interaction inside the card */
+.interactive-login-card {
+  border: 1px solid rgba(99, 179, 237, 0.2);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.interactive-login-card:hover,
+.interactive-login-card:focus-within {
+  border-color: rgba(99, 179, 237, 0.45);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 0 20px rgba(99, 179, 237, 0.12);
+}
+
+
 
