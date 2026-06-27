@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   MdCalendarToday, MdList, MdLocalShipping, MdPerson,
   MdPlayArrow, MdCheck, MdCancel, MdVisibility, MdChevronLeft, MdChevronRight,
-  MdClose, MdInfo, MdPhone, MdLocationOn, MdNotes, MdOutlineHourglassEmpty
+  MdClose, MdInfo, MdPhone, MdLocationOn, MdNotes, MdOutlineHourglassEmpty,
+  MdSearch
 } from 'react-icons/md';
 import api from '../utils/api';
 import useCountUp from '../hooks/useCountUp';
