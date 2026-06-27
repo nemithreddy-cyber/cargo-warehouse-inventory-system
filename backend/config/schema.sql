@@ -164,19 +164,29 @@ CREATE TABLE IF NOT EXISTS quotations (
 ) ENGINE=InnoDB;
 
 -- ============================================================
--- 9. Airway Bills
+-- 9. AWB Records
 -- ============================================================
-CREATE TABLE IF NOT EXISTS airway_bills (
-  id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  awb_number     VARCHAR(30)   NOT NULL UNIQUE,
-  cargo_id       INT UNSIGNED  NOT NULL,
-  customer_name  VARCHAR(120)  NOT NULL,
-  origin         VARCHAR(10)   NOT NULL,
-  destination    VARCHAR(10)   NOT NULL,
-  weight         DECIMAL(10,2) NOT NULL,
-  status         VARCHAR(50)   NOT NULL DEFAULT 'Generated',
-  created_at     TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_awb_cargo FOREIGN KEY (cargo_id) REFERENCES cargo (id) ON DELETE CASCADE
+CREATE TABLE IF NOT EXISTS awb_records (
+  id                   INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  awb_number           VARCHAR(30)    NOT NULL UNIQUE,
+  cargo_id             INT UNSIGNED   NOT NULL,
+  shipper_name         VARCHAR(120)   NOT NULL,
+  shipper_address      TEXT           NOT NULL,
+  consignee_name       VARCHAR(120)   NOT NULL,
+  consignee_address    TEXT           NOT NULL,
+  origin_airport       VARCHAR(10)    NOT NULL,
+  destination_airport  VARCHAR(10)    NOT NULL,
+  cargo_description    VARCHAR(255)   NOT NULL,
+  pieces               INT UNSIGNED   NOT NULL DEFAULT 1,
+  actual_weight        DECIMAL(10,2)  NOT NULL,
+  chargeable_weight    DECIMAL(10,2)  NOT NULL,
+  declared_value       DECIMAL(10,2)  NOT NULL DEFAULT 0.00,
+  special_instructions TEXT           NULL,
+  issue_date           DATE           NOT NULL,
+  status               ENUM('draft', 'issued', 'cancelled') NOT NULL DEFAULT 'draft',
+  created_at           TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at           TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_awb_rec_cargo FOREIGN KEY (cargo_id) REFERENCES cargo (id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- ============================================================
@@ -286,9 +296,63 @@ CREATE INDEX idx_cargo_status   ON cargo (status);
 CREATE INDEX idx_cargo_zone     ON cargo (zone_id);
 CREATE INDEX idx_cargo_cargo_id ON cargo (cargo_id);
 CREATE INDEX idx_dr_cargo_id    ON dispatch_records (cargo_id);
-CREATE INDEX idx_awb_cargo_id   ON airway_bills (cargo_id);
+CREATE INDEX idx_awb_cargo_id   ON awb_records (cargo_id);
 CREATE INDEX idx_inv_cargo_id   ON invoices (cargo_id);
 CREATE INDEX idx_cc_cargo_id    ON customs_checklists (cargo_id);
 CREATE INDEX idx_ml_cargo_id    ON message_logs (cargo_id);
+
+-- ============================================================
+-- 17. Weight Calculations
+-- ============================================================
+CREATE TABLE IF NOT EXISTS weight_calculations (
+  id                INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  cargo_id          VARCHAR(50)    NULL,
+  description       TEXT           NOT NULL,
+  pieces            INT UNSIGNED   NOT NULL DEFAULT 1,
+  actual_weight     DECIMAL(10,2)  NOT NULL,
+  volumetric_weight DECIMAL(10,2)  NOT NULL,
+  chargeable_weight DECIMAL(10,2)  NOT NULL,
+  length_cm         DECIMAL(10,2)  NOT NULL,
+  width_cm          DECIMAL(10,2)  NOT NULL,
+  height_cm         DECIMAL(10,2)  NOT NULL,
+  rate_per_kg       DECIMAL(10,2)  NOT NULL DEFAULT 0.00,
+  freight_cost      DECIMAL(10,2)  NOT NULL DEFAULT 0.00,
+  calculated_by     INT UNSIGNED   NULL,
+  created_at        TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_wc_creator FOREIGN KEY (calculated_by) REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+-- ============================================================
+-- 18. Pickup Schedules
+-- ============================================================
+CREATE TABLE IF NOT EXISTS pickup_schedules (
+  id                     INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  schedule_id            VARCHAR(30)    NOT NULL UNIQUE,
+  cargo_id               INT UNSIGNED   NOT NULL,
+  customer_name          VARCHAR(120)   NOT NULL,
+  pickup_type            ENUM('airport_pickup', 'customer_delivery') NOT NULL,
+  location               VARCHAR(255)   NOT NULL,
+  customer_address       TEXT           NULL,
+  scheduled_date         DATE           NOT NULL,
+  scheduled_time         VARCHAR(20)    NOT NULL,
+  assigned_driver        VARCHAR(120)   NOT NULL,
+  vehicle_number         VARCHAR(50)    NOT NULL,
+  contact_number         VARCHAR(50)    NOT NULL,
+  notes                  TEXT           NULL,
+  status                 ENUM('scheduled', 'in_progress', 'completed', 'cancelled') NOT NULL DEFAULT 'scheduled',
+  actual_completion_time DATETIME       NULL,
+  driver_notes           TEXT           NULL,
+  proof_of_delivery      TEXT           NULL,
+  created_by             INT UNSIGNED   NULL,
+  created_at             TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at             TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_pkp_cargo FOREIGN KEY (cargo_id) REFERENCES cargo (id) ON DELETE CASCADE,
+  CONSTRAINT fk_pkp_creator FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE INDEX idx_wc_cargo_id ON weight_calculations (cargo_id);
+CREATE INDEX idx_pkp_cargo_id ON pickup_schedules (cargo_id);
+CREATE INDEX idx_pkp_schedule_id ON pickup_schedules (schedule_id);
+
 
 

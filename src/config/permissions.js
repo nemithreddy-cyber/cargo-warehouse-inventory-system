@@ -5,7 +5,8 @@
 
 import {
   MdDashboard, MdInventory, MdWarehouse, MdLocalShipping,
-  MdAssessment, MdAdd, MdSmartToy, MdMessage, MdSettings, MdPerson
+  MdAssessment, MdAdd, MdSmartToy, MdMessage, MdSettings, MdPerson,
+  MdDescription, MdCalculate, MdCalendarToday
 } from 'react-icons/md';
 import { FaPlaneArrival } from 'react-icons/fa';
 
@@ -94,16 +95,19 @@ export const isSuperAdmin = (role) => role === ROLES.SUPER_ADMIN;
 // Role-based sidebar navigation
 // ──────────────────────────────────────────────────────────────
 const ALL_NAV = {
-  dashboard:    { to: '/dashboard',    icon: MdDashboard,      label: 'Dashboard',        group: 'core' },
-  cargo:        { to: '/cargo',        icon: MdInventory,      label: 'Cargo Inventory',  group: 'core' },
-  addCargo:     { to: '/cargo/add',    icon: MdAdd,            label: 'Receive Cargo',    group: 'core' },
-  warehouse:    { to: '/warehouse',    icon: MdWarehouse,      label: 'Warehouse',        group: 'core' },
-  dispatch:     { to: '/dispatch',     icon: MdLocalShipping,  label: 'Dispatch',         group: 'core' },
-  reports:      { to: '/reports',      icon: MdAssessment,     label: 'Reports',          group: 'core' },
-  aiOperations: { to: '/ai-operations',icon: MdSmartToy,       label: 'AI Operations',    group: 'core' },
-  messaging:    { to: '/messaging',     icon: MdMessage,        label: 'Messaging Center', group: 'core' },
-  users:        { to: '/users',        icon: MdSettings,       label: 'User Management',  group: 'extra' },
-  profile:      { to: '/profile',      icon: MdPerson,         label: 'My Profile',       group: 'extra' },
+  dashboard:        { to: '/dashboard',         icon: MdDashboard,      label: 'Dashboard',        group: 'core' },
+  cargo:            { to: '/cargo',             icon: MdInventory,      label: 'Cargo Inventory',  group: 'core' },
+  addCargo:         { to: '/cargo/add',         icon: MdAdd,            label: 'Receive Cargo',    group: 'core' },
+  warehouse:        { to: '/warehouse',         icon: MdWarehouse,      label: 'Warehouse',        group: 'core' },
+  dispatch:         { to: '/dispatch',          icon: MdLocalShipping,  label: 'Dispatch',         group: 'core' },
+  reports:          { to: '/reports',           icon: MdAssessment,     label: 'Reports',          group: 'core' },
+  aiOperations:     { to: '/ai-operations',     icon: MdSmartToy,       label: 'AI Operations',    group: 'core' },
+  messaging:        { to: '/messaging',         icon: MdMessage,        label: 'Messaging Center', group: 'core' },
+  users:            { to: '/users',             icon: MdSettings,       label: 'User Management',  group: 'extra' },
+  profile:          { to: '/profile',           icon: MdPerson,         label: 'My Profile',       group: 'extra' },
+  airwayBill:       { to: '/airway-bill',       icon: MdDescription,    label: 'Airway Bill',       group: 'extra' },
+  weightCalculator: { to: '/weight-calculator', icon: MdCalculate,      label: 'Weight Calculator', group: 'extra' },
+  pickupScheduler:  { to: '/pickup-scheduler',  icon: MdCalendarToday,  label: 'Pickup Scheduler',  group: 'extra' },
 };
 
 const roleNavConfig = {
@@ -112,12 +116,14 @@ const roleNavConfig = {
     ALL_NAV.warehouse, ALL_NAV.dispatch, ALL_NAV.reports,
     ALL_NAV.aiOperations, ALL_NAV.messaging,
     ALL_NAV.users, ALL_NAV.profile,
+    ALL_NAV.airwayBill, ALL_NAV.weightCalculator, ALL_NAV.pickupScheduler,
   ],
   [ROLES.WAREHOUSE_STAFF]: [
     ALL_NAV.dashboard, ALL_NAV.cargo, ALL_NAV.addCargo,
     ALL_NAV.warehouse, ALL_NAV.dispatch,
     ALL_NAV.aiOperations, ALL_NAV.messaging,
     ALL_NAV.profile,
+    ALL_NAV.weightCalculator, ALL_NAV.pickupScheduler,
   ],
   [ROLES.OPERATIONS_STAFF]: [
     ALL_NAV.dashboard, ALL_NAV.cargo, ALL_NAV.addCargo,
@@ -136,6 +142,7 @@ const roleNavConfig = {
     ALL_NAV.reports,
     ALL_NAV.aiOperations, ALL_NAV.messaging,
     ALL_NAV.profile,
+    ALL_NAV.airwayBill,
   ],
 };
 

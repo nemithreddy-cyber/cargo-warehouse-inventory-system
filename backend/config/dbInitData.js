@@ -112,16 +112,26 @@ CREATE TABLE IF NOT EXISTS quotations (
   created_at     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS airway_bills (
-  id             INTEGER PRIMARY KEY AUTOINCREMENT,
-  awb_number     TEXT   NOT NULL UNIQUE,
-  cargo_id       INTEGER  NOT NULL,
-  customer_name  TEXT  NOT NULL,
-  origin         TEXT   NOT NULL,
-  destination    TEXT   NOT NULL,
-  weight         REAL NOT NULL,
-  status         TEXT   NOT NULL DEFAULT 'Generated',
-  created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+CREATE TABLE IF NOT EXISTS awb_records (
+  id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+  awb_number           TEXT    NOT NULL UNIQUE,
+  cargo_id             INTEGER   NOT NULL,
+  shipper_name         TEXT    NOT NULL,
+  shipper_address      TEXT    NOT NULL,
+  consignee_name       TEXT    NOT NULL,
+  consignee_address    TEXT    NOT NULL,
+  origin_airport       TEXT    NOT NULL,
+  destination_airport  TEXT    NOT NULL,
+  cargo_description    TEXT    NOT NULL,
+  pieces               INTEGER   NOT NULL DEFAULT 1,
+  actual_weight        REAL  NOT NULL,
+  chargeable_weight    REAL  NOT NULL,
+  declared_value       REAL  NOT NULL DEFAULT 0.00,
+  special_instructions TEXT           NULL,
+  issue_date           DATE           NOT NULL,
+  status               TEXT NOT NULL DEFAULT 'draft',
+  created_at           DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at           DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (cargo_id) REFERENCES cargo (id) ON DELETE CASCADE
 );
 
@@ -195,9 +205,56 @@ CREATE INDEX IF NOT EXISTS idx_cargo_status   ON cargo (status);
 CREATE INDEX IF NOT EXISTS idx_cargo_zone     ON cargo (zone_id);
 CREATE INDEX IF NOT EXISTS idx_cargo_cargo_id ON cargo (cargo_id);
 CREATE INDEX IF NOT EXISTS idx_dr_cargo_id    ON dispatch_records (cargo_id);
-CREATE INDEX IF NOT EXISTS idx_awb_cargo_id   ON airway_bills (cargo_id);
+CREATE INDEX IF NOT EXISTS idx_awb_cargo_id   ON awb_records (cargo_id);
 CREATE INDEX IF NOT EXISTS idx_inv_cargo_id   ON invoices (cargo_id);
 CREATE INDEX IF NOT EXISTS idx_cc_cargo_id    ON customs_checklists (cargo_id);
+
+CREATE TABLE IF NOT EXISTS weight_calculations (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  cargo_id          TEXT    NULL,
+  description       TEXT           NOT NULL,
+  pieces            INTEGER   NOT NULL DEFAULT 1,
+  actual_weight     REAL  NOT NULL,
+  volumetric_weight REAL  NOT NULL,
+  chargeable_weight REAL  NOT NULL,
+  length_cm         REAL  NOT NULL,
+  width_cm          REAL  NOT NULL,
+  height_cm         REAL  NOT NULL,
+  rate_per_kg       REAL  NOT NULL DEFAULT 0.00,
+  freight_cost      REAL  NOT NULL DEFAULT 0.00,
+  calculated_by     INTEGER   NULL,
+  created_at        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (calculated_by) REFERENCES users (id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS pickup_schedules (
+  id                     INTEGER PRIMARY KEY AUTOINCREMENT,
+  schedule_id            TEXT    NOT NULL UNIQUE,
+  cargo_id               INTEGER   NOT NULL,
+  customer_name          TEXT   NOT NULL,
+  pickup_type            TEXT NOT NULL,
+  location               TEXT   NOT NULL,
+  customer_address       TEXT           NULL,
+  scheduled_date         DATE           NOT NULL,
+  scheduled_time         TEXT    NOT NULL,
+  assigned_driver        TEXT   NOT NULL,
+  vehicle_number         TEXT    NOT NULL,
+  contact_number         TEXT    NOT NULL,
+  notes                  TEXT           NULL,
+  status                 TEXT NOT NULL DEFAULT 'scheduled',
+  actual_completion_time DATETIME       NULL,
+  driver_notes           TEXT           NULL,
+  proof_of_delivery      TEXT           NULL,
+  created_by             INTEGER   NULL,
+  created_at             DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at             DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (cargo_id) REFERENCES cargo (id) ON DELETE CASCADE,
+  FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_wc_cargo_id ON weight_calculations (cargo_id);
+CREATE INDEX IF NOT EXISTS idx_pkp_cargo_id ON pickup_schedules (cargo_id);
+CREATE INDEX IF NOT EXISTS idx_pkp_schedule_id ON pickup_schedules (schedule_id);
 `;
 
 const SEED_SQL = `

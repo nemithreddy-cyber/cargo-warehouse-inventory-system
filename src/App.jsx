@@ -24,6 +24,9 @@ import MessagingSimulatorPage from './pages/MessagingSimulatorPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
 import ProfilePage from './pages/ProfilePage';
 import UserManagementPage from './pages/UserManagementPage';
+import AirwayBillPage from './pages/AirwayBillPage';
+import WeightCalculatorPage from './pages/WeightCalculatorPage';
+import PickupSchedulerPage from './pages/PickupSchedulerPage';
 
 export default function App() {
   return (
@@ -100,6 +103,30 @@ export default function App() {
                     <RoleRoute
                       allowedRoles={[ROLES.SUPER_ADMIN, ROLES.OPERATIONS_STAFF, ROLES.DOCUMENTATION_EXEC, ROLES.ACCOUNTS_STAFF]}
                       element={<ReportsPage />}
+                    />
+                  } />
+
+                  {/* Airway Bill — Accounts Staff, Super Admin */}
+                  <Route path="/airway-bill" element={
+                    <RoleRoute
+                      allowedRoles={[ROLES.SUPER_ADMIN, ROLES.ACCOUNTS_STAFF]}
+                      element={<AirwayBillPage />}
+                    />
+                  } />
+
+                  {/* Weight Calculator — Warehouse Staff, Super Admin */}
+                  <Route path="/weight-calculator" element={
+                    <RoleRoute
+                      allowedRoles={[ROLES.SUPER_ADMIN, ROLES.WAREHOUSE_STAFF]}
+                      element={<WeightCalculatorPage />}
+                    />
+                  } />
+
+                  {/* Pickup Scheduler — Warehouse Staff, Super Admin */}
+                  <Route path="/pickup-scheduler" element={
+                    <RoleRoute
+                      allowedRoles={[ROLES.SUPER_ADMIN, ROLES.WAREHOUSE_STAFF]}
+                      element={<PickupSchedulerPage />}
                     />
                   } />
                 </Route>

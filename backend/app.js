@@ -13,6 +13,9 @@ const userRoutes = require('./routes/users');
 const rulesRoutes = require('./routes/rules');
 const aiOperationsRoutes = require('./routes/aiOperations');
 const messageRoutes = require('./routes/messages');
+const awbRoutes = require('./routes/awb');
+const weightRoutes = require('./routes/weight');
+const pickupRoutes = require('./routes/pickup');
 
 const app = express();
 
@@ -55,6 +58,9 @@ app.use('/api/users', userRoutes);
 app.use('/api/rules', rulesRoutes);
 app.use('/api/ai-operations', aiOperationsRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/awb', awbRoutes);
+app.use('/api/weight', weightRoutes);
+app.use('/api/pickup', pickupRoutes);
 
 
 // Wildcard 404
